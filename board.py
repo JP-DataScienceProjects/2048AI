@@ -12,6 +12,9 @@ class Board():
         self.board = np.zeros((n, n), dtype=np.int)
         self.curr_state = GameStates.IN_PROGRESS
         self.action_set = set()
+
+        self.remaining_tiles = n**2 - 2
+        self.largest_tile = 2
         self.add_two()
         self.add_two()
         self.update_action_set()
@@ -27,6 +30,13 @@ class Board():
     def actions(self):
         return self.action_set
 
+    @property
+    def score(self):
+        return self.largest_tile
+
+    @property
+    def free_tiles(self):
+        return self.remaining_tiles
 
     def update_action_set(self):
         """
@@ -46,21 +56,27 @@ class Board():
                     self.action_set.clear()
                     return
 
+                # User can move tiles to the right if first a digit then a zero are seen when moving left-right in a row
                 if self.board[i][j] == 0:
                     h_zeroSeen = True
                     if h_digitSeen: self.action_set.add(self.right)
 
+                # User can move tiles to the left if first a zero then a digit are seen when moving left-right in a row
                 if self.board[i][j] != 0:
                     h_digitSeen = True
                     if h_zeroSeen: self.action_set.add(self.left)
+                    if (j < self.n - 1 and self.board[i][j] == self.board[i][j+1]): self.action_set.update([self.left, self.right])
 
+                # User can move tiles down if first a digit then a zero are seen when moving top-bottom in a column
                 if self.board[j][i] == 0:
                     v_zeroSeen = True
                     if v_digitSeen: self.action_set.add(self.down)
 
+                # User can move tiles up if first a zero then a digit are seen when moving top-bottom in a column
                 if self.board[j][i] != 0:
                     v_digitSeen = True
                     if v_zeroSeen: self.action_set.add(self.up)
+                    if (j < self.n - 1 and self.board[j][i] == self.board[j+1][i]): self.action_set.update([self.up, self.down])
 
         self.curr_state = GameStates.LOSE if len(self.action_set) <= 0 else GameStates.IN_PROGRESS
 
@@ -70,6 +86,7 @@ class Board():
             i, j = np.ravel(np.random.choice(len(self.board), (1, 2)))
             found = (self.board[i][j] == 0)
         self.board[i][j] = 2
+        self.remaining_tiles -= 1
 
     def compress(self):
         change_flag = False
@@ -87,18 +104,16 @@ class Board():
         return change_flag
 
     def merge(self):
-        change_flag = False
         for i in range(self.n):
             for j in range(self.n - 1):
                 if self.board[i][j] == 0 or self.board[i][j] != self.board[i][j + 1]: continue
                 self.board[i][j] *= 2
                 self.board[i][j + 1] = 0
-                change_flag = True
-        return change_flag
+                self.remaining_tiles += 1
+                self.largest_tile = max(self.board[i][j], self.largest_tile)
 
     def up(self):
         if not self.up in self.action_set: return
-        print("up")
         self.board = np.rot90(self.board, axes=(0, 1))
         self.make_move()
         self.board = np.rot90(self.board, axes=(1, 0))
@@ -106,7 +121,6 @@ class Board():
 
     def down(self):
         if not self.down in self.action_set: return
-        print("down")
         self.board = np.rot90(self.board, axes=(1, 0))
         self.make_move()
         self.board = np.rot90(self.board, axes=(0, 1))
@@ -114,13 +128,11 @@ class Board():
 
     def left(self):
         if not self.left in self.action_set: return
-        print("left")
         self.make_move()
         self.update_action_set()
 
     def right(self):
         if not self.right in self.action_set: return
-        print("right")
         self.board = np.flip(self.board, axis=1)
         self.make_move()
         self.board = np.flip(self.board, axis=1)
@@ -130,6 +142,7 @@ class Board():
     def make_move(self):
         self.compress_and_merge()
         self.add_two()
+        print('Score: {0}'.format(self.score))
 
     def compress_and_merge(self):
         self.compress()
