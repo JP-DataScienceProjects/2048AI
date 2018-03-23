@@ -69,11 +69,9 @@ class GameGrid(Frame):
         self.update_idletasks()
         
     def key_down(self, event):
-        if repr(event.char) in self.commands:
-            change_flag = self.commands[repr(event.char)]()
-            if not change_flag: return
+        if repr(event.char) in self.commands and self.commands[repr(event.char)] in self.board.actions:
+            self.commands[repr(event.char)]()
 
-            self.board.add_two()
             self.update_grid_cells()
             if self.board.game_state == GameStates.WIN:
                 self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
