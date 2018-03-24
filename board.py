@@ -7,13 +7,14 @@ class GameStates(Enum):
     IN_PROGRESS = 3
 
 class Board():
-    def __init__(self, n):
+    def __init__(self, n, max_tile=2048):
         self.n = n
+        self.max_tile = max_tile
         self.board = np.zeros((n, n), dtype=np.int)
         self.curr_state = GameStates.IN_PROGRESS
         self.action_set = set()
 
-        self.remaining_tiles = n**2 - 2
+        self.remaining_tiles = n**2
         self.largest_tile = 2
         self.add_two()
         self.add_two()
@@ -51,7 +52,7 @@ class Board():
             h_zeroSeen, v_zeroSeen, v_digitSeen, h_digitSeen = False, False, False, False
 
             for j in range(self.n):
-                if self.board[i][j] == 2048:
+                if self.board[i][j] >= self.max_tile:
                     self.curr_state = GameStates.WIN
                     self.action_set.clear()
                     return
@@ -65,6 +66,7 @@ class Board():
                 if self.board[i][j] != 0:
                     h_digitSeen = True
                     if h_zeroSeen: self.action_set.add(self.left)
+                    # If two adjacent horizontal tiles have the same value, either a left or right action can be performed
                     if (j < self.n - 1 and self.board[i][j] == self.board[i][j+1]): self.action_set.update([self.left, self.right])
 
                 # User can move tiles down if first a digit then a zero are seen when moving top-bottom in a column
@@ -76,6 +78,7 @@ class Board():
                 if self.board[j][i] != 0:
                     v_digitSeen = True
                     if v_zeroSeen: self.action_set.add(self.up)
+                    # If two adjacent vertical tiles have the same value, either an up or down action can be performed
                     if (j < self.n - 1 and self.board[j][i] == self.board[j+1][i]): self.action_set.update([self.up, self.down])
 
         self.curr_state = GameStates.LOSE if len(self.action_set) <= 0 else GameStates.IN_PROGRESS
@@ -142,7 +145,7 @@ class Board():
     def make_move(self):
         self.compress_and_merge()
         self.add_two()
-        print('Score: {0}'.format(self.score))
+        print('Score: {0}, Remaining tiles: {1}'.format(self.score, self.remaining_tiles))
 
     def compress_and_merge(self):
         self.compress()
