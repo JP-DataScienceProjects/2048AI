@@ -1,5 +1,5 @@
 from tkinter import *
-from board import Board, GameStates
+from board import Board, GameStates, GameActions
 
 SIZE = 500
 GRID_LEN = 4
@@ -35,8 +35,8 @@ class GameGrid(Frame):
         self.master.title('2048')
         self.master.bind("<Key>", self.key_down)
 
-        self.commands = {   KEY_UP: self.board.up, KEY_DOWN: self.board.down, KEY_LEFT: self.board.left, KEY_RIGHT: self.board.right,
-                            KEY_UP_ALT: self.board.up, KEY_DOWN_ALT: self.board.down, KEY_LEFT_ALT: self.board.left, KEY_RIGHT_ALT: self.board.right }
+        self.commands = {   KEY_UP: GameActions.UP, KEY_DOWN: GameActions.DOWN, KEY_LEFT: GameActions.LEFT, KEY_RIGHT: GameActions.RIGHT,
+                            KEY_UP_ALT: GameActions.UP, KEY_DOWN_ALT: GameActions.DOWN, KEY_LEFT_ALT: GameActions.LEFT, KEY_RIGHT_ALT: GameActions.RIGHT }
 
         self.grid_cells = []
         self.init_grid()
@@ -70,7 +70,7 @@ class GameGrid(Frame):
         
     def key_down(self, event):
         if repr(event.char) in self.commands and self.commands[repr(event.char)] in self.board.actions:
-            self.commands[repr(event.char)]()
+            self.board.make_move(self.commands[repr(event.char)])
 
             self.update_grid_cells()
             if self.board.game_state == GameStates.WIN:
