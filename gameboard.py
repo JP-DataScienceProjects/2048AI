@@ -131,7 +131,7 @@ class GameBoard():
         if not action in self.action_set: return
         {GameActions.UP: self.up, GameActions.DOWN: self.down, GameActions.LEFT: self.left, GameActions.RIGHT: self.right}[action]()
         self.update_action_set()
-        print('Score: {0}, Remaining tiles: {1}'.format(self.score, self._free_tiles))
+        #print('Score: {0}, Remaining tiles: {1}'.format(self.score, self._free_tiles))
 
     def up(self):
         self.board = np.rot90(self.board, axes=(0, 1))

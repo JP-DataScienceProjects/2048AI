@@ -1,2 +1,2 @@
 pip install tensorboard
-tensorboard --logdir "model_checkpoints"
+tensorboard --logdir=model_checkpoints
