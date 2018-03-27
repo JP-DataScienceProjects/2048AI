@@ -1,5 +1,5 @@
 from tkinter import *
-from board import Board, GameStates, GameActions
+from gameboard import GameBoard, GameStates, GameActions
 
 SIZE = 500
 GRID_LEN = 4
@@ -29,7 +29,7 @@ class GameGrid(Frame):
     def __init__(self):
         Frame.__init__(self)
 
-        self.board = Board(GRID_LEN)
+        self.board = GameBoard(GRID_LEN)
 
         self.grid()
         self.master.title('2048')

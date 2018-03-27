@@ -12,7 +12,7 @@ class GameActions(Enum):
     LEFT = 2
     RIGHT = 3
 
-class Board():
+class GameBoard():
     def __init__(self, n, max_tile=2048):
         self.n = n
         self.max_tile = max_tile
@@ -21,7 +21,7 @@ class Board():
         self.action_set = set()
 
         self._free_tiles = n ** 2
-        #self.largest_tile = 2
+        self._largest_tile_placed = 2
         self._score = 0
         self.add_two()
         self.add_two()
@@ -35,13 +35,16 @@ class Board():
         return self._game_state
 
     @property
+    def largest_tile_placed(self):
+        return self._largest_tile_placed
+
+    @property
     def actions(self):
         return self.action_set
 
     @property
     def score(self):
         return self._score + self._free_tiles
-        #return self.largest_tile
 
     @property
     def free_tiles(self):
@@ -121,7 +124,7 @@ class Board():
                 self.board[i][j] *= 2
                 self.board[i][j + 1] = 0
                 self._free_tiles += 1
-                #self.largest_tile = max(self.board[i][j], self.largest_tile)
+                self._largest_tile_placed = max(self.board[i][j], self._largest_tile_placed)
                 self._score += self.board[i][j] // 4
 
     def make_move(self, action):
@@ -153,34 +156,3 @@ class Board():
         self.merge()
         self.compress()
         self.add_two()
-
-
-# import tensorflow as tf
-# class TensorBoard(Board):
-#     def __init__(self, n, max_tile=2048):
-#         with tf.name_scope('gameboard'):
-#             self.n = tf.constant(n, name='n', dtype=tf.int32)
-#             self.max_tile = tf.constant(max_tile, name='max_tile', dtype=tf.int32)
-#             self.board = tf.get_variable('board', shape=[n, n], dtype=tf.int32, initializer=tf.zeros_initializer, trainable=False)
-#             self._game_state = tf.get_variable(name='game_state', dtype=tf.int32, initializer=tf.constant(GameStates.IN_PROGRESS.value), trainable=False)
-#             self.action_set = tf.get_variable(name='action_set', shape=[1], dtype=tf.int32, trainable=False)
-#             self._free_tiles = tf.get_variable(name='free_tiles', dtype=tf.int32, initializer=tf.constant(n ** 2), trainable=False)
-#             self._score = tf.get_variable(name='score', dtype=tf.int32, initializer=tf.constant(0), trainable=False)
-#
-#         self.add_two()
-#         self.add_two()
-#         #self.update_action_set()
-#
-#
-#     def add_two(self):
-#         emptycells = tf.get_variable('empty_cells', shape=[1], dtype=tf.int32, collections=[tf.GraphKeys.LOCAL_VARIABLES])
-#         tf.
-#         tf.map_fn(lambda x: x > 0, self.board)
-#
-#         found = False
-#         while not found:
-#             #i, j = np.ravel(np.random.choice(len(self.board), (1, 2)))
-#             i,j = tf.random_uniform((1,2), minval=0, maxval=self.n, dtype=tf.int32, name='random')
-#             found = (self.board[i][j] == 0)
-#         self.board[i][j] = 2
-#         self._free_tiles -= 1
