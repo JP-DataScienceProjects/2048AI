@@ -64,7 +64,7 @@ class GameModel():
         X, X_action_mask = self.prepare_inputs(board_inputs, action_inputs)
         return self.model.predict(x={'X': X, 'X_action_mask': X_action_mask})
 
-    def copy_weights(self, newmodel):
+    def copy_weights_to(self, newmodel):
         newmodel.model.set_weights(self.model.get_weights())
         return newmodel
 
@@ -72,7 +72,7 @@ class GameModel():
 class GameTrainer():
     def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.001):
         self.q_network = GameModel(board_size, model_name='q_network', learning_rate=learning_rate)
-        self.q_hat = self.q_network.copy_weights(GameModel(board_size, model_name='q_hat', learning_rate=learning_rate))
+        self.q_hat = self.q_network.copy_weights_to(GameModel(board_size, model_name='q_hat', learning_rate=learning_rate))
         self.save_model = save_model
         self.model_dir = model_dir
         self.debug = debug
@@ -117,7 +117,7 @@ class GameTrainer():
     #     return self.q_network(np.array(boards), t_actions)
 
 
-    def train_model(self, episodes=10, max_tile=2048, max_history=100, min_epsilon=0.25, mini_batch_size=64, gamma=0.99, reset_qhat_batches=10000):
+    def train_model(self, episodes=10, max_tile=2048, max_history=400000, min_epsilon=0.25, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
         # Training variables
         D = []  # experience replay queue
         gamehistory = []    # history of completed games
@@ -125,6 +125,7 @@ class GameTrainer():
         epsilon = max_epsilon       # probability of selecting a random action.  This is annealed from 1.0 to 0.1 over time
         update_frequency = 4        # Number of actions selected before the Q-network is updated again
         globalstep = 0
+        games_won = 0
 
         approx_steps_per_episode = 200
         episodes_per_tb_output = 100
@@ -137,7 +138,7 @@ class GameTrainer():
 
             try:
                 self.q_network.model.load_weights(weight_file)
-                self.q_hat = self.q_network.copy_weights(self.q_hat)
+                self.q_hat = self.q_network.copy_weights_to(self.q_hat)
                 #max_epsilon = 0.1
                 print("Loaded existing Q-network weights from " + weight_file)
             except OSError:
@@ -191,9 +192,10 @@ class GameTrainer():
 
                 # Every so often, copy the network weights over from the Q-network to the Q-hat network
                 # (this is required for network weight convergence)
-                if globalstep % reset_qhat_batches == 0:
-                    self.q_hat.model.set_weights(self.q_network.model.get_weights())
-                    #print("Weights copied to Q-hat network")
+                if globalstep % update_qhat_weights_steps == 0:
+                    self.q_network.copy_weights_to(self.q_hat)
+                    #self.q_hat.model.set_weights(self.q_network.model.get_weights())
+                    print("Weights copied to Q-hat network")
 
                 # Perform annealing on epsilon
                 epsilon = max(min_epsilon, min_epsilon + ((max_epsilon - min_epsilon) * (episodes - episode) / episodes))
@@ -202,9 +204,10 @@ class GameTrainer():
 
             # Append metrics for each completed game to the game history list
             gameresult = {'result': gameboard.game_state.name, 'score': gameboard.score, 'steps': stepcount, 'max tile placed': gameboard.largest_tile_placed}
-            #if self.debug: print(gameresult)
-            print(gameresult)
             gamehistory.append(gameresult)
+            print(gameresult)
+            if gameboard.game_state == GameStates.WIN: games_won += 1
+            if (episode + 1) % 20 == 0: print("Game win %: {:.1f}".format(100. * (games_won / (episode + 1))))
 
         # Export the weights from the Q-network when training completed
         if self.save_model and self.model_dir is not None:
