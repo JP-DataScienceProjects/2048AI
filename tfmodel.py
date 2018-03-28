@@ -23,31 +23,31 @@ class GameModel():
             X = tf.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
 
             #with tf.variable_scope("L1"):
-            conv1 = tf.layers.Conv2D(filters=self.board_size ** 2, kernel_size=3, padding='same', name='conv1')(X)
-            maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=2, padding='same', name='maxpool1')(conv1)
+            conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
+            maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
 
-            #conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.relu, name='conv2')(maxpool1)
-            #maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=2, padding='same', name='maxpool2')(conv2)
+            conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
+            maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
 
             #with tf.variable_scope("L2"):
-            flatten2 = tf.layers.Flatten()(maxpool1)
-            #dropout2 = tf.layers.Dropout(rate=0.2, name='dropout2')(flatten2)
-            batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(flatten2)
+            flatten2 = tf.layers.Flatten(name='flatten2')(maxpool2)
+            dropout2 = tf.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
+            batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
 
             #with tf.variable_scope("L3"):
-            fc3 = tf.layers.Dense(units=32, name='fc3')(batchnorm2)
-            #dropout3 = tf.layers.Dropout(rate=0.2, name='dropout3')(fc3)
-            batchnorm3 = tf.layers.BatchNormalization(name='batchnorm3')(fc3)
+            fc3 = tf.layers.Dense(units=64, activation=tf.keras.activations.tanh, name='fc3')(batchnorm2)
+            dropout3 = tf.layers.Dropout(rate=0.4, name='dropout3')(fc3)
+            batchnorm3 = tf.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
             #with tf.variable_scope("L4"):
-            fc4 = tf.layers.Dense(units=len(GameActions), name='fc4', activation=tf.keras.activations.softmax)(batchnorm3)
+            fc4 = tf.layers.Dense(units=len(GameActions), name='fc4')(batchnorm3)
             X_action_mask = tf.keras.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
-            output = tf.keras.layers.Multiply()([X_action_mask, fc4])
+            output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc4])
 
             model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output])
             #model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=tf.keras.losses.mean_squared_error)
-            model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95),
-                          loss=tf.keras.losses.mean_squared_error)
+            # model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
+            model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
             return model
 
     def prepare_inputs(self, board_inputs, action_inputs=None):
@@ -67,6 +67,13 @@ class GameModel():
     def copy_weights_to(self, newmodel):
         newmodel.model.set_weights(self.model.get_weights())
         return newmodel
+
+    @staticmethod
+    def clipped_loss(y_true, y_pred):
+        sq_err = tf.keras.backend.square(y_pred - y_true)
+        sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
+        total_err = tf.keras.backend.sum(sq_err_clipped, axis=-1)
+        return total_err
 
 
 class GameTrainer():
@@ -106,18 +113,18 @@ class GameTrainer():
     def calculate_y_target(self, newboards, actions_oh, rewards, gamestates, gamma):
         # Calculate the target predictions based on the obtained rewards using the Q-hat network
         # The first two lines compute gamma times
-        q_hat_softmax = self.q_hat(np.array(newboards))
-        #print("Q-hat softmax probabilities: ", q_hat_softmax)
-        q_hat_pred = np.max(q_hat_softmax, axis=1)
+        q_hat_output = self.q_hat(np.array(newboards))
+        # print("Q-hat output values: ", q_hat_output)
+        q_hat_pred = np.max(q_hat_output, axis=1)
         q_values = q_hat_pred * np.array([0 if s != GameStates.IN_PROGRESS.value else gamma for s in gamestates])
-        total_reward = np.clip(np.array(rewards) + q_values, -1, 1)     # Reward clipping
+        total_reward = np.array(rewards + q_values)
         return actions_oh * total_reward.reshape((-1, 1))
 
     # def calculate_y_predicted(self, boards, t_actions):
     #     return self.q_network(np.array(boards), t_actions)
 
 
-    def train_model(self, episodes=10, max_tile=2048, max_history=400000, min_epsilon=0.25, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
+    def train_model(self, episodes=10, max_tile=2048, max_history=750000, min_epsilon=0.25, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
         # Training variables
         D = []  # experience replay queue
         gamehistory = []    # history of completed games
@@ -137,7 +144,7 @@ class GameTrainer():
             tbCallback = tf.keras.callbacks.TensorBoard(log_dir=self.model_dir, histogram_freq=1, batch_size=mini_batch_size, write_graph=False, write_images=False, write_grads=True)
 
             try:
-                self.q_network.model.load_weights(weight_file)
+                self.q_network.model.load_weights(weight_file, by_name=True)
                 self.q_hat = self.q_network.copy_weights_to(self.q_hat)
                 #max_epsilon = 0.1
                 print("Loaded existing Q-network weights from " + weight_file)
