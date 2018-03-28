@@ -44,7 +44,8 @@ class GameBoard():
 
     @property
     def score(self):
-        return self._score + self._free_tiles
+        #return self._score + self._free_tiles
+        return self._score
 
     @property
     def free_tiles(self):
