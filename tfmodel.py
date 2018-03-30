@@ -23,7 +23,8 @@ class GameModel():
     def build_model(self):
 
         with tf.variable_scope(self.model_name):
-            X = tf.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
+            #X = tf.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
+            X = tf.keras.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
 
             #with tf.variable_scope("L1"):
             #conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
@@ -38,18 +39,18 @@ class GameModel():
             #batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
 
             #with tf.variable_scope("L3"):
-            flatten2 = tf.layers.Flatten(name='flatten2')(X)
-            fc3 = tf.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
-            dropout3 = tf.layers.Dropout(rate=0.5, name='dropout3')(fc3)
-            batchnorm3 = tf.layers.BatchNormalization(name='batchnorm3')(dropout3)
+            flatten2 = tf.keras.layers.Flatten(name='flatten2')(X)
+            fc3 = tf.keras.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
+            dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
+            batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
-            fc4 = tf.layers.Dense(units=16, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
-            dropout4 = tf.layers.Dropout(rate=0.5, name='dropout4')(fc4)
-            batchnorm4 = tf.layers.BatchNormalization(name='batchnorm4')(dropout4)
+            fc4 = tf.keras.layers.Dense(units=16, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
+            dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
+            batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
             #with tf.variable_scope("L4"):
-            fc5 = tf.layers.Dense(units=len(GameActions), name='fc5')(batchnorm4)
-            X_action_mask = tf.keras.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
+            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(batchnorm4)
+            X_action_mask = tf.keras.layers.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
             output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
 
             model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output])
