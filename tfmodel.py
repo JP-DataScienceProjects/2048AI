@@ -40,11 +40,11 @@ class GameModel():
 
             #with tf.variable_scope("L3"):
             flatten2 = tf.keras.layers.Flatten(name='flatten2')(X)
-            fc3 = tf.keras.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
+            fc3 = tf.keras.layers.Dense(units=128, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
             dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
             batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
-            fc4 = tf.keras.layers.Dense(units=16, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
+            fc4 = tf.keras.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
             dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
             batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
