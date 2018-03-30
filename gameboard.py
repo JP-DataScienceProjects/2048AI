@@ -98,7 +98,7 @@ class GameBoard():
     def add_two(self):
         found = False
         while not found:
-            i, j = np.ravel(np.random.choice(len(self.board), (1, 2)))
+            i, j = np.random.randint(0, len(self.board), 2)
             found = (self.board[i][j] == 0)
         self.board[i][j] = 2
         self._free_tiles -= 1
@@ -126,11 +126,14 @@ class GameBoard():
                 self.board[i][j + 1] = 0
                 self._free_tiles += 1
                 self._largest_tile_placed = max(self.board[i][j], self._largest_tile_placed)
-                self._score += self.board[i][j] // 4
+                self._score += self.board[i][j]
+                #self._score += self.board[i][j] // 4
+                #self._score += int(np.log2(self.board[i][j])) - 1
 
     def make_move(self, action):
         if not action in self.action_set: return
         {GameActions.UP: self.up, GameActions.DOWN: self.down, GameActions.LEFT: self.left, GameActions.RIGHT: self.right}[action]()
+        self.add_two()
         self.update_action_set()
         #print('Score: {0}, Remaining tiles: {1}'.format(self.score, self._free_tiles))
 
@@ -156,4 +159,3 @@ class GameBoard():
         self.compress()
         self.merge()
         self.compress()
-        self.add_two()

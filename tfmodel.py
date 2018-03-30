@@ -1,8 +1,11 @@
 import os
 import sys
+import itertools
 import argparse
 import random
 import copy
+from collections import deque
+import pickle
 import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,7 +14,7 @@ from matplotlib.ticker import MaxNLocator
 from gameboard import GameBoard, GameStates, GameActions
 
 class GameModel():
-    def __init__(self, board_size, model_name, learning_rate=0.1):
+    def __init__(self, board_size, model_name, learning_rate):
         self.board_size = board_size
         self.model_name = model_name
         self.learning_rate = learning_rate
@@ -23,31 +26,37 @@ class GameModel():
             X = tf.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
 
             #with tf.variable_scope("L1"):
-            conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
-            maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
+            #conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
+            #maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
 
-            conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
-            maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
+            #conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
+            #maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
 
             #with tf.variable_scope("L2"):
-            flatten2 = tf.layers.Flatten(name='flatten2')(maxpool2)
-            dropout2 = tf.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
-            batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
+            #flatten2 = tf.layers.Flatten(name='flatten2')(maxpool2)
+            #dropout2 = tf.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
+            #batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
 
             #with tf.variable_scope("L3"):
-            fc3 = tf.layers.Dense(units=64, activation=tf.keras.activations.tanh, name='fc3')(batchnorm2)
-            dropout3 = tf.layers.Dropout(rate=0.4, name='dropout3')(fc3)
+            flatten2 = tf.layers.Flatten(name='flatten2')(X)
+            fc3 = tf.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
+            dropout3 = tf.layers.Dropout(rate=0.5, name='dropout3')(fc3)
             batchnorm3 = tf.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
+            fc4 = tf.layers.Dense(units=16, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
+            dropout4 = tf.layers.Dropout(rate=0.5, name='dropout4')(fc4)
+            batchnorm4 = tf.layers.BatchNormalization(name='batchnorm4')(dropout4)
+
             #with tf.variable_scope("L4"):
-            fc4 = tf.layers.Dense(units=len(GameActions), name='fc4')(batchnorm3)
+            fc5 = tf.layers.Dense(units=len(GameActions), name='fc5')(batchnorm4)
             X_action_mask = tf.keras.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
-            output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc4])
+            output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
 
             model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output])
-            #model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=tf.keras.losses.mean_squared_error)
-            # model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
-            model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
+            model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
+            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
+            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
+            #model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
             return model
 
     def prepare_inputs(self, board_inputs, action_inputs=None):
@@ -70,25 +79,39 @@ class GameModel():
 
     @staticmethod
     def clipped_loss(y_true, y_pred):
-        sq_err = tf.keras.backend.square(y_pred - y_true)
-        sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
-        total_err = tf.keras.backend.sum(sq_err_clipped, axis=-1)
+        # sq_err = tf.keras.backend.square(y_pred - y_true)
+        # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
+        err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
+        sq_err_clipped = tf.keras.backend.square(err_clipped)
+        total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=-1))
         return total_err
 
 
 class GameTrainer():
     def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.001):
-        self.q_network = GameModel(board_size, model_name='q_network', learning_rate=learning_rate)
-        self.q_hat = self.q_network.copy_weights_to(GameModel(board_size, model_name='q_hat', learning_rate=learning_rate))
         self.save_model = save_model
         self.model_dir = model_dir
+        self.weight_file_path = self.model_dir + "q_network_weights.h5py"
+        self.experience_history_path = self.model_dir + "exp_history.p"
         self.debug = debug
         self.learning_rate = learning_rate
+
+        self.q_network = GameModel(board_size, model_name='q_network', learning_rate=learning_rate)
+        self.q_hat = self.q_network.copy_weights_to(GameModel(board_size, model_name='q_hat', learning_rate=learning_rate))
         print(self.q_network.model.summary())
 
     def calc_reward(self, oldboard, newboard):
-        return -1 if newboard.game_state == GameStates.LOSE else (1 if newboard.game_state == GameStates.WIN else 0)
+        #reward = -newboard.max_tile if newboard.game_state == GameStates.LOSE else (newboard.max_tile if newboard.game_state == GameStates.WIN else newboard.score - oldboard.score)
+        #nom_reward = (-newboard.max_tile if newboard.game_state == GameStates.LOSE else (newboard.max_tile if newboard.game_state == GameStates.WIN else newboard.score - oldboard.score))
+        #if newboard.game_state == GameStates.LOSE: return -int(np.log2(newboard.max_tile))
+        #if newboard.game_state == GameStates.WIN: return int(np.log2(newboard.max_tile))
         #return newboard.score - oldboard.score
+        if newboard.game_state == GameStates.LOSE: return -1
+        if newboard.game_state == GameStates.WIN: return 1
+        return 0
+        #if newboard.score == oldboard.score: return 0
+        #return (int(np.log2(newboard.score - oldboard.score)) - 1) / (int(np.log2(newboard.max_tile)) - 1)
+
 
     def exec_action(self, gameboard, gameaction):
         oldboard = copy.deepcopy(gameboard)
@@ -123,36 +146,54 @@ class GameTrainer():
     # def calculate_y_predicted(self, boards, t_actions):
     #     return self.q_network(np.array(boards), t_actions)
 
+    def save_model_weights(self):
+        # Export the weights from the Q-network when training completed
+        if self.save_model and self.model_dir is not None:
+            self.q_network.model.save_weights(self.weight_file_path)
+            print("Q-network weights saved to " + self.weight_file_path)
 
-    def train_model(self, episodes=10, max_tile=2048, max_history=750000, min_epsilon=0.25, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
+    def restore_model_weights(self):
+        # Attempt to restore Q-network weights from disk and copy to Q-hat, if present
+        self.q_network.model.load_weights(self.weight_file_path, by_name=True)
+        self.q_hat = self.q_network.copy_weights_to(self.q_hat)
+        print("Loaded existing Q-network weights from " + self.weight_file_path)
+
+    def save_experience_history(self, D):
+        if os.path.exists(self.experience_history_path): os.remove(self.experience_history_path)
+        pickle.dump(D, open(self.experience_history_path, "wb"))
+        print("Saved gameplay experience to " + self.experience_history_path)
+
+    def restore_experience_history(self):
+        D = pickle.load(open(self.experience_history_path, "rb")) if os.path.exists(self.experience_history_path) else []
+        if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
+        return D
+
+    def train_model(self, episodes=10, max_tile=2048, max_experience_history=1000000, max_game_history=5000, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
         # Training variables
-        D = []  # experience replay queue
-        gamehistory = []    # history of completed games
-        max_epsilon = 1.0
+        D = self.restore_experience_history()  # experience replay queue
+        gamehistory = deque(maxlen=max_game_history)    # history of completed games
+        #max_epsilon = 1.0
         epsilon = max_epsilon       # probability of selecting a random action.  This is annealed from 1.0 to 0.1 over time
         update_frequency = 4        # Number of actions selected before the Q-network is updated again
         globalstep = 0
-        games_won = 0
 
         approx_steps_per_episode = 200
         episodes_per_tb_output = 100
         steps_per_tb_output = approx_steps_per_episode * episodes_per_tb_output     # MUST BE A MULTIPLE OF update_frequency
 
-        # Attempt to restore Q-network weights from disk and copy to Q-hat, if present
-        if self.save_model:
-            weight_file = self.model_dir + "q_network_weights.h5py"
-            tbCallback = tf.keras.callbacks.TensorBoard(log_dir=self.model_dir, histogram_freq=1, batch_size=mini_batch_size, write_graph=False, write_images=False, write_grads=True)
+        # Prepare a callback to write TensorBoard debugging output
+        tbCallback = tf.keras.callbacks.TensorBoard(log_dir=self.model_dir, histogram_freq=1,
+                                                    batch_size=mini_batch_size, write_graph=False,
+                                                    write_images=False, write_grads=True)
 
-            try:
-                self.q_network.model.load_weights(weight_file, by_name=True)
-                self.q_hat = self.q_network.copy_weights_to(self.q_hat)
-                #max_epsilon = 0.1
-                print("Loaded existing Q-network weights from " + weight_file)
-            except OSError:
-                print("WARNING: no existing model weights available.  Will train a new model.\n")
-
+        # Attempt to restore the model weights from the save file, if present
+        try:
+            self.restore_model_weights()
+        except OSError:
+            print("WARNING: no existing model weights available.  Will train a new model.\n")
 
         # Loop over requested number of games (episodes)
+        loss = 0
         for episode in range(episodes):
             # New game
             gameboard = GameBoard(self.q_network.board_size, max_tile=max_tile)
@@ -171,20 +212,19 @@ class GameTrainer():
                 # Append the (preprocessed) original board, selected action, reward and new board to the history
                 # This is to implement experience replay for reinforcement learning
                 # Ensure history size is capped at max_history by randomly replacing an experience in the queue if necessary
-                experience = (self.preprocess_state(oldboard), action, reward, self.preprocess_state(gameboard), gameboard.game_state.value)
-                if len(D) >= max_history: D[np.random.choice(len(D), 1)[0]] = experience
+                experience = (self.preprocess_state(oldboard), action.value, reward, self.preprocess_state(gameboard), gameboard.game_state.value)
+                if len(D) >= max_experience_history: D[np.random.randint(0, len(D))] = experience
                 else: D.append(experience)
 
                 # Perform a gradient descent step on the Q-network when a game is finished or every so often
-                #if globalstep % self.mini_batch_size == 0:
                 if globalstep % update_frequency == 0 and len(D) >= mini_batch_size:
                     # Randomly sample from the experience history and unpack into separate arrays
-                    batch = [D[i] for i in np.random.choice(len(D), mini_batch_size, replace=False)]
+                    batch = [D[i] for i in np.random.randint(0, len(D), mini_batch_size)]
                     oldboards, actions, rewards, newboards, gamestates = [list(k) for k in zip(*batch)]
 
                     # One-hot encode the actions for each of these boards as this will form the basis of the
                     # loss calculation
-                    actions_one_hot = Utils.one_hot([a.value for a in actions], len(GameActions))
+                    actions_one_hot = Utils.one_hot(actions, len(GameActions))
 
                     # Compute the target network output using the Q-hat network, actions and rewards for each
                     # sampled history item
@@ -193,16 +233,19 @@ class GameTrainer():
                     # Perform a single gradient descent update step on the Q-network
                     callbacks = []
                     if self.debug and (globalstep % steps_per_tb_output == 0): callbacks.append(tbCallback)
-                    #callbacks.append(tbCallback)
+                    X = [np.array(oldboards).reshape((-1, self.q_network.board_size, self.q_network.board_size, 1)), actions_one_hot]
 
-                    self.q_network.model.fit(x={'X': np.array(oldboards).reshape((-1, self.q_network.board_size, self.q_network.board_size, 1)), 'X_action_mask': actions_one_hot}, y=y_target, validation_split=0.16, epochs=1, verbose=False, callbacks=callbacks)
+                    if len(callbacks) > 0:
+                        self.q_network.model.fit(x=X, y=y_target, validation_split=0.16, epochs=1, verbose=False, callbacks=callbacks)
+                    else:
+                        loss += self.q_network.model.train_on_batch(x=X, y=y_target)
 
                 # Every so often, copy the network weights over from the Q-network to the Q-hat network
                 # (this is required for network weight convergence)
                 if globalstep % update_qhat_weights_steps == 0:
                     self.q_network.copy_weights_to(self.q_hat)
-                    #self.q_hat.model.set_weights(self.q_network.model.get_weights())
                     print("Weights copied to Q-hat network")
+                    self.save_model_weights()
 
                 # Perform annealing on epsilon
                 epsilon = max(min_epsilon, min_epsilon + ((max_epsilon - min_epsilon) * (episodes - episode) / episodes))
@@ -210,23 +253,34 @@ class GameTrainer():
                 #if self.debug: print("epsilon: {:.4f}".format(epsilon))
 
             # Append metrics for each completed game to the game history list
-            gameresult = {'result': gameboard.game_state.name, 'score': gameboard.score, 'steps': stepcount, 'max tile placed': gameboard.largest_tile_placed}
+            gameresult = (gameboard.game_state.value, gameboard.score, stepcount, gameboard.largest_tile_placed)
+            if len(gamehistory) >= max_game_history: gamehistory.popleft()
             gamehistory.append(gameresult)
-            print(gameresult)
-            if gameboard.game_state == GameStates.WIN: games_won += 1
-            if (episode + 1) % 20 == 0: print("Game win %: {:.1f}".format(100. * (games_won / (episode + 1))))
+            print('result: {0}, score: {1}, steps: {2}, max tile: {3}'.format(GameStates(gameresult[0]).name, gameresult[1], gameresult[2], gameresult[3]))
+            if (episode + 1) % 20 == 0:
+                games_to_retrieve = min(len(gamehistory), 100)
+                last_x_games = list(itertools.islice(gamehistory, len(gamehistory) - games_to_retrieve, None))
+                last_x_results = list(zip(*last_x_games))[0]
+                games_won = np.sum([1 if r == GameStates.WIN.value else 0 for r in last_x_results])
+                print("\nGame win % (for last {:d} games): {:.1f}%".format(games_to_retrieve, 100. * (games_won / games_to_retrieve)))
+                print("Epsilon = {:.3f}".format(epsilon))
+                print("Training loss: {:.5f}\n".format(loss))
+                loss = 0
 
-        # Export the weights from the Q-network when training completed
-        if self.save_model and self.model_dir is not None:
-            self.q_network.model.save_weights(weight_file)
-            print ("Q-network weights saved to " + weight_file)
+            # Save experience history to disk periodically
+            if self.save_model and (episode + 1) % 1000 == 0: self.save_experience_history(D)
+
+        # Perform one final model weight save for next run
+        if self.save_model:
+            self.save_model_weights()
+            self.save_experience_history(D)
 
         return gamehistory
 
     @staticmethod
     def display_training_history(gamehistory):
-        results, scores, stepcounts, max_tiles = list(zip(*[g.values() for g in gamehistory]))
-        resultpercentages = np.cumsum([1 if r == GameStates.WIN.name else 0 for r in results]) / range(1, len(results) + 1)
+        results, scores, stepcounts, max_tiles = list(zip(*gamehistory))
+        resultpercentages = np.cumsum([1 if r == GameStates.WIN.value else 0 for r in results]) / range(1, len(results) + 1)
         print("Final win %: {:2f}".format(resultpercentages[-1] * 100.))
 
         x = range(1, len(results) + 1)
@@ -269,8 +323,8 @@ def main(argv):
         save_dir = os.getcwd() + os.sep + flags.model_dir + os.sep
 
         # Invoke the model trainer
-        trainer = GameTrainer(board_size=flags.bsize, save_model=flags.save, model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate)
-        game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile)
+        trainer = GameTrainer(board_size=flags.bsize, save_model=(not flags.no_save), model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate)
+        game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile, min_epsilon=flags.min_epsilon, max_epsilon=flags.max_epsilon)
         if not flags.suppress_charts: GameTrainer.display_training_history(game_history)
 
 
@@ -281,11 +335,15 @@ if __name__ == "__main__":
     parser.add_argument('--train', metavar='<EPISODES>', default=10, required=False, type=int, help='# of training episodes (games) to play')
     parser.add_argument('--max_tile', metavar='<NUM>', default=2048, required=False, type=int, help='largest tile to use in the game')
     parser.add_argument('--suppress_charts', action='store_true', help='whether or not to suppress display of summary charts after training')
-    parser.add_argument('--save', action='store_false', help='whether or not to save the trained model')
+    parser.add_argument('--no_save', action='store_true', help='do not re-save the trained model')
     parser.add_argument('--debug', action='store_true', help='whether or not to write debug Tensorboard info')
     parser.add_argument('--model_dir', metavar='<PATH>', default='model_checkpoints', required=False, type=str, nargs=1,
                         help='output directory for trained model')
-    parser.add_argument('--learning_rate', metavar='<NUM>', default=0.001, required=False, type=int, help='learning rate for optimizer')
+    parser.add_argument('--learning_rate', metavar='<NUM>', default=0.001, required=False, type=float, help='learning rate for optimizer')
+    parser.add_argument('--min_epsilon', metavar='<NUM>', default=0.1, required=False, type=float,
+                        help='minimum probability to select a random action')
+    parser.add_argument('--max_epsilon', metavar='<NUM>', default=1.0, required=False, type=float,
+                        help='maximum probability to select a random action')
     # parser.add_argument('--playonly', metavar='<SIZE>', default=False, required=False, type=bool, nargs=0,
     #                     help='observe gameplay using best model')
 

@@ -1,3 +1,3 @@
 pip install tensorboard
-start "" "http://snowballz:6006/#distributions&run=."
-tensorboard --logdir=model_checkpoints
+start "" "http://localhost:5005/#distributions&run=."
+tensorboard --host=127.0.0.1 --port=5005 --logdir=model_checkpoints
