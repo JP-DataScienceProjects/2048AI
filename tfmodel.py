@@ -8,6 +8,7 @@ import copy
 from collections import deque
 import pickle
 import tensorflow as tf
+from tensorflow import set_random_seed
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -321,8 +322,9 @@ class Utils():
 def main(argv):
     # Seed the RNGs
     seed = datetime.now().microsecond
-    np.random.seed(seed)
     random.seed(seed)
+    np.random.seed(seed)
+    set_random_seed(seed)
 
     flags = parser.parse_args()
 
