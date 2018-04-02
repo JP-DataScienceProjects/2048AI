@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime
 import itertools
 import argparse
 import random
@@ -263,7 +264,8 @@ class GameTrainer():
                 last_x_games = list(itertools.islice(gamehistory, len(gamehistory) - games_to_retrieve, None))
                 last_x_results = list(zip(*last_x_games))[0]
                 games_won = np.sum([1 if r == GameStates.WIN.value else 0 for r in last_x_results])
-                print("\nGame win % (for last {:d} games): {:.1f}%".format(games_to_retrieve, 100. * (games_won / games_to_retrieve)))
+                print("\nEpisode {0}/{1}".format(episode, episodes))
+                print("Game win % (for last {:d} games): {:.1f}%".format(games_to_retrieve, 100. * (games_won / games_to_retrieve)))
                 print("Epsilon = {:.3f}".format(epsilon))
                 print("Training loss: {:.5f}\n".format(loss))
                 loss = 0
@@ -317,6 +319,11 @@ class Utils():
 
 
 def main(argv):
+    # Seed the RNGs
+    seed = datetime.now().microsecond
+    np.random.seed(seed)
+    random.seed(seed)
+
     flags = parser.parse_args()
 
     if flags.train:
@@ -327,6 +334,9 @@ def main(argv):
         trainer = GameTrainer(board_size=flags.bsize, save_model=(not flags.no_save), model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate)
         game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile, min_epsilon=flags.min_epsilon, max_epsilon=flags.max_epsilon)
         if not flags.suppress_charts: GameTrainer.display_training_history(game_history)
+
+    # Explicitly clear the keras session to avoid intermittent error message on termination
+    tf.keras.backend.clear_session()
 
 
 if __name__ == "__main__":
