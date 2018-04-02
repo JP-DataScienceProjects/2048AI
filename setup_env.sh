@@ -1,7 +1,7 @@
 #!/bin/sh
 sudo apt-get update
 sudo apt-get -y upgrade
-sudo apt-get install -y python3-pip python3-tk
+sudo apt-get install -y python3-pip python3-tk screen
 sudo apt install git-all
 sudo curl -sSL https://get.docker.com/ | sh
 
