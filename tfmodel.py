@@ -264,7 +264,7 @@ class GameTrainer():
                 last_x_games = list(itertools.islice(gamehistory, len(gamehistory) - games_to_retrieve, None))
                 last_x_results = list(zip(*last_x_games))[0]
                 games_won = np.sum([1 if r == GameStates.WIN.value else 0 for r in last_x_results])
-                print("\nEpisode {0}/{1}".format(episode, episodes))
+                print("\nEpisode {0}/{1}".format(episode + 1, episodes))
                 print("Game win % (for last {:d} games): {:.1f}%".format(games_to_retrieve, 100. * (games_won / games_to_retrieve)))
                 print("Epsilon = {:.3f}".format(epsilon))
                 print("Training loss: {:.5f}\n".format(loss))
