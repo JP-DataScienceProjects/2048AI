@@ -12,4 +12,3 @@ python3 tfmodel.py --train 200000 --max_tile=$max_tile --debug --suppress_charts
 python3 tfmodel.py --train 200000 --max_tile=$max_tile --debug --suppress_charts --learning_rate=$lr --min_epsilon=$min_epsilon
 python3 tfmodel.py --train 200000 --max_tile=$max_tile --debug --suppress_charts --learning_rate=$lr --min_epsilon=$min_epsilon
 python3 tfmodel.py --train 200000 --max_tile=$max_tile --debug --suppress_charts --learning_rate=$lr --min_epsilon=$min_epsilon
-#python3 tfmodel.py --train 200000 --max_tile=$max_tile --debug --learning_rate=$lr
