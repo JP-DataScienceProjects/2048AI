@@ -171,7 +171,7 @@ class GameTrainer():
         if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
         return D
 
-    def train_model(self, episodes=10, max_tile=2048, max_experience_history=1000000, max_game_history=5000, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
+    def train_model(self, episodes=10, max_tile=2048, max_experience_history=700000, max_game_history=5000, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
         # Training variables
         D = self.restore_experience_history()  # experience replay queue
         gamehistory = deque(maxlen=max_game_history)    # history of completed games
