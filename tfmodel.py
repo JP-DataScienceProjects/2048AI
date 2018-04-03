@@ -163,8 +163,14 @@ class GameTrainer():
 
     def save_experience_history(self, D):
         if os.path.exists(self.experience_history_path): os.remove(self.experience_history_path)
-        pickle.dump(D, open(self.experience_history_path, "wb"))
-        print("Saved gameplay experience to " + self.experience_history_path)
+        saved = False
+        while (not saved):
+            try:
+                pickle.dump(D, open(self.experience_history_path, "wb"))
+                saved = True
+                print("Saved gameplay experience to " + self.experience_history_path)
+            except:
+                print("WARNING: failed to save experience replay history.  Will try again...")
 
     def restore_experience_history(self):
         D = pickle.load(open(self.experience_history_path, "rb")) if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else []
