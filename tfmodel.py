@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+import time
 import itertools
 import argparse
 import random
@@ -164,17 +165,26 @@ class GameTrainer():
     def save_experience_history(self, D):
         if os.path.exists(self.experience_history_path): os.remove(self.experience_history_path)
         saved = False
+        f_hist = None
         while (not saved):
             try:
-                pickle.dump(D, open(self.experience_history_path, "wb"))
+                f_hist = open(self.experience_history_path, "wb")
+                pickle.dump(D, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
             except:
-                print("WARNING: failed to save experience replay history.  Will try again...")
+                print("WARNING: failed to save experience replay history.  Will try again in 5 seconds...")
+                time.sleep(5)
+            finally:
+                if not f_hist is None and 'close' in dir(f_hist): f_hist.close()
 
     def restore_experience_history(self):
-        D = pickle.load(open(self.experience_history_path, "rb")) if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else []
-        if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
+        D = []
+        f_hist = open(self.experience_history_path, "rb") if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else None
+        if not f_hist is None:
+            D = pickle.load(f_hist)
+            if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
+            f_hist.close()
         return D
 
     def train_model(self, episodes=10, max_tile=2048, max_experience_history=700000, max_game_history=5000, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
@@ -226,7 +236,8 @@ class GameTrainer():
                 else: D.append(experience)
 
                 # Perform a gradient descent step on the Q-network when a game is finished or every so often
-                if globalstep % update_frequency == 0 and len(D) >= mini_batch_size:
+                #if globalstep % update_frequency == 0 and len(D) >= mini_batch_size:
+                if len(D) >= max(mini_batch_size, int(0.9 * max_experience_history)) and globalstep % update_frequency == 0:
                     # Randomly sample from the experience history and unpack into separate arrays
                     batch = [D[i] for i in np.random.randint(0, len(D), mini_batch_size)]
                     oldboards, actions, rewards, newboards, gamestates = [list(k) for k in zip(*batch)]
@@ -272,6 +283,7 @@ class GameTrainer():
                 last_x_results = list(zip(*last_x_games))[0]
                 games_won = np.sum([1 if r == GameStates.WIN.value else 0 for r in last_x_results])
                 print("\nEpisode {0}/{1}".format(episode + 1, episodes))
+                print("History queue {0}/{1}".format(len(D), max_experience_history))
                 print("Game win % (for last {:d} games): {:.1f}%".format(games_to_retrieve, 100. * (games_won / games_to_retrieve)))
                 print("Epsilon = {:.3f}".format(epsilon))
                 print("Training loss: {:.5f}\n".format(loss))
