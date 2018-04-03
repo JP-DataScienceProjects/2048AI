@@ -167,7 +167,7 @@ class GameTrainer():
         print("Saved gameplay experience to " + self.experience_history_path)
 
     def restore_experience_history(self):
-        D = pickle.load(open(self.experience_history_path, "rb")) if os.path.exists(self.experience_history_path) else []
+        D = pickle.load(open(self.experience_history_path, "rb")) if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else []
         if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
         return D
 
