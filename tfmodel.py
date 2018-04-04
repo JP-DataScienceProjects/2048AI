@@ -6,6 +6,7 @@ import itertools
 import argparse
 import random
 import copy
+import shutil
 from collections import deque
 import pickle
 import tensorflow as tf
@@ -177,6 +178,7 @@ class GameTrainer():
                 time.sleep(5)
             finally:
                 if not f_hist is None and 'close' in dir(f_hist): f_hist.close()
+        if os.path.getsize(self.experience_history_path) > 0: shutil.copy2(self.experience_history_path, self.experience_history_path.replace('.p', '_BACKUP.p'))
 
     def restore_experience_history(self):
         D = []
@@ -290,7 +292,7 @@ class GameTrainer():
                 loss = 0
 
             # Save experience history to disk periodically
-            if self.save_model and (episode + 1) % 1000 == 0: self.save_experience_history(D)
+            if self.save_model and (episode + 1) % 2000 == 0: self.save_experience_history(D)
 
         # Perform one final model weight save for next run
         if self.save_model:
