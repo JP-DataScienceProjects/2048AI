@@ -190,7 +190,7 @@ class GameTrainer():
         f_hist = open(self.experience_history_path, "rb") if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else None
         if not f_hist is None:
             #D = pickle.load(f_hist)
-            dill.load(f_hist)
+            D = dill.load(f_hist)
             if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
             f_hist.close()
         return D
