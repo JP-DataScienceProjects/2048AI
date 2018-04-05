@@ -7,6 +7,7 @@ import argparse
 import random
 import copy
 import shutil
+import traceback
 from collections import deque
 import pickle
 import tensorflow as tf
@@ -173,7 +174,7 @@ class GameTrainer():
                 pickle.dump(D, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
-            except as e:
+            except Exception as e:
                 traceback.print_exc()
                 print(e)
                 print("WARNING: failed to save experience replay history.  Will try again in 5 seconds...")
