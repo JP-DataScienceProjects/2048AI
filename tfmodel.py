@@ -173,7 +173,9 @@ class GameTrainer():
                 pickle.dump(D, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
-            except:
+            except as e:
+                traceback.print_exc()
+                print(e)
                 print("WARNING: failed to save experience replay history.  Will try again in 5 seconds...")
                 time.sleep(5)
             finally:
