@@ -9,6 +9,7 @@ import copy
 import shutil
 import traceback
 from collections import deque
+import dill
 import pickle
 import tensorflow as tf
 from tensorflow import set_random_seed
@@ -171,7 +172,8 @@ class GameTrainer():
         while (not saved):
             try:
                 f_hist = open(self.experience_history_path, "wb")
-                pickle.dump(D, f_hist)
+                #pickle.dump(D, f_hist)
+                dill.dump(self.experience_history_path, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
             except Exception as e:
@@ -187,7 +189,8 @@ class GameTrainer():
         D = []
         f_hist = open(self.experience_history_path, "rb") if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else None
         if not f_hist is None:
-            D = pickle.load(f_hist)
+            #D = pickle.load(f_hist)
+            dill.load(f_hist)
             if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
             f_hist.close()
         return D
