@@ -81,4 +81,5 @@ class GameGrid(Frame):
                 self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
                 self.grid_cells[1][2].configure(text="Lose!",bg=BACKGROUND_COLOR_CELL_EMPTY)
 
-gamegrid = GameGrid()
+if __name__ == "__main__":
+    gamegrid = GameGrid()

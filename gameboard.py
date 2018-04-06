@@ -1,5 +1,6 @@
 import numpy as np
 from enum import Enum
+from zope.event import notify
 
 class GameStates(Enum):
     WIN = 1
@@ -11,6 +12,10 @@ class GameActions(Enum):
     DOWN = 1
     LEFT = 2
     RIGHT = 3
+
+class OnBoardChanged():
+    def __init__(self, board):
+        self.board = board
 
 class GameBoard():
     def __init__(self, n, max_tile=2048):
@@ -25,7 +30,7 @@ class GameBoard():
         self._score = 0
         self.add_two()
         self.add_two()
-        self.update_action_set()
+        self.on_board_updated()
 
     def __getitem__(self, item):
         return self.board[item]
@@ -50,6 +55,10 @@ class GameBoard():
     @property
     def free_tiles(self):
         return self._free_tiles
+
+    def on_board_updated(self):
+        self.update_action_set()
+        notify(OnBoardChanged(self))
 
     def update_action_set(self):
         """
@@ -134,7 +143,7 @@ class GameBoard():
         if not action in self.action_set: return
         {GameActions.UP: self.up, GameActions.DOWN: self.down, GameActions.LEFT: self.left, GameActions.RIGHT: self.right}[action]()
         self.add_two()
-        self.update_action_set()
+        self.on_board_updated()
         #print('Score: {0}, Remaining tiles: {1}'.format(self.score, self._free_tiles))
 
     def up(self):

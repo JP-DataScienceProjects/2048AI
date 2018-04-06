@@ -10,89 +10,15 @@ import shutil
 import traceback
 from collections import deque
 import dill
-import pickle
 import tensorflow as tf
 from tensorflow import set_random_seed
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
+from utils import Utils
 from gameboard import GameBoard, GameStates, GameActions
-
-class GameModel():
-    def __init__(self, board_size, model_name, learning_rate):
-        self.board_size = board_size
-        self.model_name = model_name
-        self.learning_rate = learning_rate
-        self.model = self.build_model()
-
-    def build_model(self):
-
-        with tf.variable_scope(self.model_name):
-            #X = tf.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
-            X = tf.keras.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
-
-            #with tf.variable_scope("L1"):
-            #conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
-            #maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
-
-            #conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
-            #maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
-
-            #with tf.variable_scope("L2"):
-            #flatten2 = tf.layers.Flatten(name='flatten2')(maxpool2)
-            #dropout2 = tf.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
-            #batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
-
-            #with tf.variable_scope("L3"):
-            flatten2 = tf.keras.layers.Flatten(name='flatten2')(X)
-            fc3 = tf.keras.layers.Dense(units=128, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
-            dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
-            batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
-
-            fc4 = tf.keras.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
-            dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
-            batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
-
-            #with tf.variable_scope("L4"):
-            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(batchnorm4)
-            X_action_mask = tf.keras.layers.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
-            output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
-
-            model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output])
-            model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
-            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
-            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
-            #model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
-            return model
-
-    def prepare_inputs(self, board_inputs, action_inputs=None):
-        X = board_inputs.reshape((-1, self.board_size, self.board_size, 1))
-        X_action_mask = action_inputs.reshape(-1, len(GameActions)) if isinstance(action_inputs, np.ndarray) else np.ones((X.shape[0], len(GameActions)))
-        return (X, X_action_mask)
-
-    def __call__(self, board_inputs, action_inputs=None):
-        """
-        Builds the model graph and returns it
-        :param inputs: A batch of input game boards of size [m, board_size, board_size, 1]
-        :return: A logits tensor of shape [m, 4] for <UP/DOWN/LEFT/RIGHT> action prediction
-        """
-        X, X_action_mask = self.prepare_inputs(board_inputs, action_inputs)
-        return self.model.predict(x={'X': X, 'X_action_mask': X_action_mask})
-
-    def copy_weights_to(self, newmodel):
-        newmodel.model.set_weights(self.model.get_weights())
-        return newmodel
-
-    @staticmethod
-    def clipped_loss(y_true, y_pred):
-        # sq_err = tf.keras.backend.square(y_pred - y_true)
-        # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
-        err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
-        sq_err_clipped = tf.keras.backend.square(err_clipped)
-        total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=-1))
-        return total_err
-
+from gamemodel import GameModel
 
 class GameTrainer():
     def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.001):
@@ -129,6 +55,9 @@ class GameTrainer():
         #return gameboard.board.astype(np.float32) / gameboard.max_tile
         return np.log2(np.clip(gameboard.board,1, gameboard.max_tile)) / np.log2(gameboard.max_tile)
 
+    def get_action_probabilities(self, gameboard):
+        return np.ravel(self.q_network(self.preprocess_state(gameboard)))
+
     def select_action(self, gameboard, epsilon):
         if len(gameboard.action_set) <= 0: return None
 
@@ -136,8 +65,8 @@ class GameTrainer():
         if np.random.rand() < epsilon: return random.sample(gameboard.action_set, 1)[0]
 
         # Return the action with highest probability that is actually possible on the board, as predicted by the Q network
-        action_probs = self.q_network(self.preprocess_state(gameboard))
-        best_actions = [GameActions(i) for i in np.argsort(np.ravel(action_probs))[::-1]]
+        action_probs = self.get_action_probabilities(gameboard)
+        best_actions = [GameActions(i) for i in np.argsort(action_probs)[::-1]]
         return next(a for a in best_actions if a in gameboard.action_set)
 
     def calculate_y_target(self, newboards, actions_oh, rewards, gamestates, gamma):
@@ -190,7 +119,8 @@ class GameTrainer():
         f_hist = open(self.experience_history_path, "rb") if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else None
         if not f_hist is None:
             #D = pickle.load(f_hist)
-            D = dill.load(f_hist)
+            D_tmp = dill.load(f_hist)
+            if isinstance(D_tmp, list): D = D_tmp
             if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
             f_hist.close()
         return D
@@ -245,7 +175,7 @@ class GameTrainer():
 
                 # Perform a gradient descent step on the Q-network when a game is finished or every so often
                 #if globalstep % update_frequency == 0 and len(D) >= mini_batch_size:
-                if len(D) >= max(mini_batch_size, int(0.9 * max_experience_history)) and globalstep % update_frequency == 0:
+                if len(D) >= max(mini_batch_size, max_experience_history) and globalstep % update_frequency == 0:
                     # Randomly sample from the experience history and unpack into separate arrays
                     batch = [D[i] for i in np.random.randint(0, len(D), mini_batch_size)]
                     oldboards, actions, rewards, newboards, gamestates = [list(k) for k in zip(*batch)]
@@ -336,56 +266,3 @@ class GameTrainer():
         plt.show()
 
         return gamehistory
-
-class Utils():
-    @staticmethod
-    def one_hot(data, classes):
-        encoded = np.zeros((len(data), classes))
-        encoded[np.arange(encoded.shape[0]), np.array(data)] = 1
-        return encoded
-
-
-def main(argv):
-    # Seed the RNGs
-    seed = datetime.now().microsecond
-    random.seed(seed)
-    np.random.seed(seed)
-    set_random_seed(seed)
-
-    flags = parser.parse_args()
-
-    if flags.train:
-        # Determine model checkpoint directory
-        save_dir = os.getcwd() + os.sep + flags.model_dir + os.sep
-
-        # Invoke the model trainer
-        trainer = GameTrainer(board_size=flags.bsize, save_model=(not flags.no_save), model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate)
-        game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile, min_epsilon=flags.min_epsilon, max_epsilon=flags.max_epsilon)
-        if not flags.suppress_charts: GameTrainer.display_training_history(game_history)
-
-    # Explicitly clear the keras session to avoid intermittent error message on termination
-    tf.keras.backend.clear_session()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Create and train an AI to play the 2048 game using Reinforcement Learning with Tensorflow')
-    parser.add_argument('--bsize', metavar='<SIZE>', default=4, required=False, type=int, help='NxN board size for the 2048 board')
-    parser.add_argument('--train', metavar='<EPISODES>', default=10, required=False, type=int, help='# of training episodes (games) to play')
-    parser.add_argument('--max_tile', metavar='<NUM>', default=2048, required=False, type=int, help='largest tile to use in the game')
-    parser.add_argument('--suppress_charts', action='store_true', help='whether or not to suppress display of summary charts after training')
-    parser.add_argument('--no_save', action='store_true', help='do not re-save the trained model')
-    parser.add_argument('--debug', action='store_true', help='whether or not to write debug Tensorboard info')
-    parser.add_argument('--model_dir', metavar='<PATH>', default='model_checkpoints', required=False, type=str, nargs=1,
-                        help='output directory for trained model')
-    parser.add_argument('--learning_rate', metavar='<NUM>', default=0.001, required=False, type=float, help='learning rate for optimizer')
-    parser.add_argument('--min_epsilon', metavar='<NUM>', default=0.1, required=False, type=float,
-                        help='minimum probability to select a random action')
-    parser.add_argument('--max_epsilon', metavar='<NUM>', default=1.0, required=False, type=float,
-                        help='maximum probability to select a random action')
-    # parser.add_argument('--playonly', metavar='<SIZE>', default=False, required=False, type=bool, nargs=0,
-    #                     help='observe gameplay using best model')
-
-    #tf.logging.set_verbosity(tf.logging.INFO)
-    # tf.app.run()
-    main(argv=sys.argv)
