@@ -1,7 +1,7 @@
 #!/bin/sh
 ./runTB.sh
 
-lr=0.0007
+lr=0.01
 max_tile=256
 
 python3 main.py --train 100 --max_tile=$max_tile --debug --learning_rate=$lr --suppress_charts
