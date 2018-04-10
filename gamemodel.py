@@ -25,24 +25,24 @@ class GameModel():
             X = tf.keras.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
 
             #with tf.variable_scope("L1"):
-            #conv1 = tf.layers.Conv2D(filters=64, kernel_size=3, padding='same', activation=tf.nn.leaky_relu, name='conv1')(X)
-            #maxpool1 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
+            conv1 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same', activation=tf.keras.activations.relu, name='conv1')(X)
+            maxpool1 = tf.keras.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool1')(conv1)
 
-            #conv2 = tf.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
-            #maxpool2 = tf.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
+            #conv2 = tf.keras.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.nn.leaky_relu, name='conv2')(maxpool1)
+            #maxpool2 = tf.keras.layers.MaxPooling2D(pool_size=2, strides=1, padding='valid', name='maxpool2')(conv2)
 
             #with tf.variable_scope("L2"):
-            #flatten2 = tf.layers.Flatten(name='flatten2')(maxpool2)
-            #dropout2 = tf.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
-            #batchnorm2 = tf.layers.BatchNormalization(name='batchnorm2')(dropout2)
+            #flatten2 = tf.keras.layers.Flatten(name='flatten2')(maxpool2)
+            #dropout2 = tf.keras.layers.Dropout(rate=0.4, name='dropout2')(flatten2)
+            #batchnorm2 = tf.keras.layers.BatchNormalization(name='batchnorm2')(dropout2)
 
             #with tf.variable_scope("L3"):
-            flatten2 = tf.keras.layers.Flatten(name='flatten2')(X)
+            flatten2 = tf.keras.layers.Flatten(name='flatten2')(maxpool1)
             #fc3 = tf.keras.layers.Dense(units=128, activation=tf.keras.activations.relu, name='fc3')(flatten2)
             #dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
             #batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
-            fc4 = tf.keras.layers.Dense(units=64, activation=tf.keras.activations.relu, name='fc4')(flatten2)
+            fc4 = tf.keras.layers.Dense(units=32, activation=tf.keras.activations.relu, name='fc4')(flatten2)
             #dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
             #batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
@@ -87,7 +87,8 @@ class GameModel():
 
     def print_sample_weights(self, samples=4):
         print("Sample weights for {0}".format(self.model_name))
-        for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense)]:
+        #for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense)]:
+        for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense) or isinstance(d, tf.keras.layers.Conv2D)]:
             weights,biases = layer.get_weights()
             print("\t{0}: {1}, {2}".format(layer.name, np.ravel(weights)[:samples], biases[:samples]))
 
@@ -110,12 +111,12 @@ class GameModel():
         if isinstance(newmodel, GameModel): newmodel.compile()
         return newmodel
 
-    @staticmethod
-    def clipped_loss(y_true, y_pred):
-        # sq_err = tf.keras.backend.square(y_pred - y_true)
-        # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
-        err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
-        sq_err_clipped = tf.keras.backend.square(err_clipped)
-        total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=0))
-        #total_err = tf.keras.backend.sum(sq_err_clipped, axis=0)
-        return total_err
+    # @staticmethod
+    # def clipped_loss(y_true, y_pred):
+    #     # sq_err = tf.keras.backend.square(y_pred - y_true)
+    #     # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
+    #     err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
+    #     sq_err_clipped = tf.keras.backend.square(err_clipped)
+    #     total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=0))
+    #     #total_err = tf.keras.backend.sum(sq_err_clipped, axis=0)
+    #     return total_err
