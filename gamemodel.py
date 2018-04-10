@@ -63,7 +63,7 @@ class GameModel():
         #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate), loss='mse')
 
 
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=lr, clipvalue=1.0), loss='mse')
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=lr, momentum=0.9, clipvalue=1.0), loss='mse')
         #self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
 
 

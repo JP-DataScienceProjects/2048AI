@@ -59,7 +59,7 @@ class GameTrainer():
 
     def preprocess_state(self, gameboard):
         #return gameboard.board.astype(np.float32) / gameboard.max_tile
-        return np.log2(np.clip(gameboard.board,1, gameboard.max_tile)) / np.log2(gameboard.max_tile)
+        return (np.log2(np.clip(gameboard.board,1, gameboard.max_tile)) - 0.5) / np.log2(gameboard.max_tile)
 
     def get_action_probabilities(self, gameboard):
         return np.ravel(self.q_network(self.preprocess_state(gameboard)))
@@ -248,7 +248,7 @@ class GameTrainer():
                 print("GC.isenabled() = {0}".format(gc.isenabled()))
                 print("Garbage:", gc.garbage)
                 print("Counts:", gc.get_count())
-                #print("globals() = ", globals())
+                print("globals() = ", sorted(list(globals().keys())))
 
         # Perform one final model weight save for next run
         if self.save_model:
