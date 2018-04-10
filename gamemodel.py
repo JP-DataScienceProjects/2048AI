@@ -55,13 +55,15 @@ class GameModel():
         self.compile()
         print("Built fresh model for {0}".format(self.model_name))
 
-    def compile(self):
+    def compile(self, learning_rate=None):
+        lr = self.learning_rate if not learning_rate else learning_rate
+
         #self.model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
         #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
         #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate), loss='mse')
 
 
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate, clipvalue=1.0), loss='mse')
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=lr, clipvalue=1.0), loss='mse')
         #self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
 
 
