@@ -82,7 +82,7 @@ class GameTrainer():
         while (not saved):
             try:
                 f_hist = open(self.experience_history_path, "wb")
-                dill.dump(self.experience_history_path, f_hist)
+                dill.dump(D, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
             except Exception as e:
