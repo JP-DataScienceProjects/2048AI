@@ -115,7 +115,7 @@ class GameTrainer():
             f_hist.close()
         return D
 
-    def train_model(self, episodes=10, max_tile=2048, max_game_history=5000, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
+    def train_model(self, episodes=10, max_tile=2048, max_game_history=500, max_epsilon=1.0, min_epsilon=0.1, mini_batch_size=32, gamma=0.99, update_qhat_weights_steps=10000):
         # Training variables
         D = self.restore_experience_history()  # experience replay queue
         gamehistory = deque(maxlen=max_game_history)    # history of completed games
