@@ -17,7 +17,6 @@ from gametrainer import GameTrainer
 
 def run_interactive(board_size, model_dir):
     trainer = GameTrainer(board_size=board_size, model_dir=model_dir)
-    trainer.restore_model_weights()
 
     def on_board_updated(event):
         if not isinstance(event, OnBoardChanged): return

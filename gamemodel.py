@@ -1,14 +1,22 @@
 import numpy as np
 import tensorflow as tf
+import os
 
 from gameboard import GameActions
 
 class GameModel():
-    def __init__(self, board_size, model_name, learning_rate):
+    def __init__(self, board_size, model_name, model_dir, learning_rate):
         self.board_size = board_size
         self.model_name = model_name
+        self.model_dir = model_dir
+        self.model_file_path = self.model_dir + "q_network_model.json"
+        self.weight_file_path = self.model_dir + "q_network_weights.h5py"
         self.learning_rate = learning_rate
-        self.model = self.build_model()
+
+        if os.path.exists(self.model_file_path):
+            self.load_from_file()
+        else:
+            self.build_model()
 
     def build_model(self):
 
@@ -30,25 +38,58 @@ class GameModel():
 
             #with tf.variable_scope("L3"):
             flatten2 = tf.keras.layers.Flatten(name='flatten2')(X)
-            fc3 = tf.keras.layers.Dense(units=128, activation=tf.nn.leaky_relu, name='fc3')(flatten2)
-            dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
-            batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
+            #fc3 = tf.keras.layers.Dense(units=128, activation=tf.keras.activations.relu, name='fc3')(flatten2)
+            #dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
+            #batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
-            fc4 = tf.keras.layers.Dense(units=64, activation=tf.nn.leaky_relu, name='fc4')(batchnorm3)
-            dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
-            batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
+            fc4 = tf.keras.layers.Dense(units=64, activation=tf.keras.activations.relu, name='fc4')(flatten2)
+            #dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
+            #batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
             #with tf.variable_scope("L4"):
-            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(batchnorm4)
+            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(fc4)
             X_action_mask = tf.keras.layers.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
             output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
 
-            model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output])
-            model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
-            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
-            #model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
-            #model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
-            return model
+            self.model = tf.keras.Model(inputs=[X, X_action_mask], outputs=[output], name=self.model_name)
+        self.compile()
+        print("Built fresh model for {0}".format(self.model_name))
+
+    def compile(self):
+        #self.model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
+        #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
+        #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate), loss='mse')
+
+
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss='mse')
+        #self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
+
+
+
+        # model.compile(optimizer=tf.keras.optimizers.Adam(lr=self.learning_rate), loss=GameModel.clipped_loss)
+        # model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=tf.keras.losses.mean_squared_error)
+        # model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate, rho=0.95), loss=GameModel.clipped_loss)
+
+    def save_to_file(self):
+        with open(self.model_file_path, 'w') as f:
+            f.write(self.model.to_json())
+        self.model.save_weights(self.weight_file_path, overwrite=True)
+        print("Model/weights for {0} saved to {1} and {2}".format(self.model_name, self.model_file_path, self.weight_file_path))
+        self.print_sample_weights()
+
+    def load_from_file(self):
+        with open(self.model_file_path) as f:
+            self.model = tf.keras.models.model_from_json(f.read())
+        self.model.load_weights(self.weight_file_path)
+        self.compile()
+        print("Model/weights for {0} loaded from {1} and {2}".format(self.model_name, self.model_file_path, self.weight_file_path))
+        self.print_sample_weights()
+
+    def print_sample_weights(self, samples=4):
+        print("Sample weights for {0}".format(self.model_name))
+        for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense)]:
+            weights,biases = layer.get_weights()
+            print("\t{0}: {1}, {2}".format(layer.name, np.ravel(weights)[:samples], biases[:samples]))
 
     def prepare_inputs(self, board_inputs, action_inputs=None):
         X = board_inputs.reshape((-1, self.board_size, self.board_size, 1))
@@ -66,6 +107,7 @@ class GameModel():
 
     def copy_weights_to(self, newmodel):
         newmodel.model.set_weights(self.model.get_weights())
+        if isinstance(newmodel, GameModel): newmodel.compile()
         return newmodel
 
     @staticmethod
@@ -74,5 +116,6 @@ class GameModel():
         # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
         err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
         sq_err_clipped = tf.keras.backend.square(err_clipped)
-        total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=-1))
+        total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=0))
+        #total_err = tf.keras.backend.sum(sq_err_clipped, axis=0)
         return total_err

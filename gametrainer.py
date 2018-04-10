@@ -1,9 +1,6 @@
 import os
-import sys
-from datetime import datetime
 import time
 import itertools
-import argparse
 import random
 import copy
 import shutil
@@ -11,7 +8,6 @@ import traceback
 from collections import deque
 import dill
 import tensorflow as tf
-from tensorflow import set_random_seed
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -24,14 +20,14 @@ class GameTrainer():
     def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.001):
         self.save_model = save_model
         self.model_dir = model_dir
-        self.weight_file_path = self.model_dir + "q_network_weights.h5py"
         self.experience_history_path = self.model_dir + "exp_history.p"
         self.debug = debug
         self.learning_rate = learning_rate
 
-        self.q_network = GameModel(board_size, model_name='q_network', learning_rate=learning_rate)
-        self.q_hat = self.q_network.copy_weights_to(GameModel(board_size, model_name='q_hat', learning_rate=learning_rate))
+        self.q_network = GameModel(board_size, model_name='q_network', model_dir=self.model_dir, learning_rate=learning_rate)
         print(self.q_network.model.summary())
+        self.q_hat = GameModel(board_size, model_name='q_hat', model_dir=self.model_dir, learning_rate=learning_rate)
+        #self.q_hat = self.q_network.copy_weights_to(GameModel(board_size, model_name='q_hat', model_dir=self.model_dir, learning_rate=learning_rate))
 
     def calc_reward(self, oldboard, newboard):
         #reward = -newboard.max_tile if newboard.game_state == GameStates.LOSE else (newboard.max_tile if newboard.game_state == GameStates.WIN else newboard.score - oldboard.score)
@@ -79,21 +75,6 @@ class GameTrainer():
         total_reward = np.array(rewards + q_values)
         return actions_oh * total_reward.reshape((-1, 1))
 
-    # def calculate_y_predicted(self, boards, t_actions):
-    #     return self.q_network(np.array(boards), t_actions)
-
-    def save_model_weights(self):
-        # Export the weights from the Q-network when training completed
-        if self.save_model and self.model_dir is not None:
-            self.q_network.model.save_weights(self.weight_file_path)
-            print("Q-network weights saved to " + self.weight_file_path)
-
-    def restore_model_weights(self):
-        # Attempt to restore Q-network weights from disk and copy to Q-hat, if present
-        self.q_network.model.load_weights(self.weight_file_path, by_name=True)
-        self.q_hat = self.q_network.copy_weights_to(self.q_hat)
-        print("Loaded existing Q-network weights from " + self.weight_file_path)
-
     def save_experience_history(self, D):
         if os.path.exists(self.experience_history_path): os.remove(self.experience_history_path)
         saved = False
@@ -101,7 +82,6 @@ class GameTrainer():
         while (not saved):
             try:
                 f_hist = open(self.experience_history_path, "wb")
-                #pickle.dump(D, f_hist)
                 dill.dump(self.experience_history_path, f_hist)
                 saved = True
                 print("Saved gameplay experience to " + self.experience_history_path)
@@ -118,7 +98,6 @@ class GameTrainer():
         D = []
         f_hist = open(self.experience_history_path, "rb") if os.path.exists(self.experience_history_path) and os.path.getsize(self.experience_history_path) > 0 else None
         if not f_hist is None:
-            #D = pickle.load(f_hist)
             D_tmp = dill.load(f_hist)
             if isinstance(D_tmp, list): D = D_tmp
             if len(D) > 0: print("Restored gameplay experience from " + self.experience_history_path)
@@ -142,12 +121,6 @@ class GameTrainer():
         tbCallback = tf.keras.callbacks.TensorBoard(log_dir=self.model_dir, histogram_freq=1,
                                                     batch_size=mini_batch_size, write_graph=False,
                                                     write_images=False, write_grads=True)
-
-        # Attempt to restore the model weights from the save file, if present
-        try:
-            self.restore_model_weights()
-        except OSError:
-            print("WARNING: no existing model weights available.  Will train a new model.\n")
 
         # Loop over requested number of games (episodes)
         loss = 0
@@ -198,12 +171,37 @@ class GameTrainer():
                     else:
                         loss += self.q_network.model.train_on_batch(x=X, y=y_target)
 
+                        # fc4, fc5 = [d for d in self.q_network.model.layers if isinstance(d, tf.keras.layers.Dense)]
+                        # fc4_b, fc5_b = fc4.get_weights(), fc5.get_weights()
+                        # loss += self.q_network.model.train_on_batch(x=X, y=y_target)
+                        # fc4_a, fc5_a = fc4.get_weights(), fc5.get_weights()
+                        # #print("\nboard: ", np.ravel(X[i]))
+                        # #print("mask: ", actions_one_hot)
+                        # #print("Y_target", y_target)
+                        # print("fc5 weight change:", fc5_a[0] - fc5_b[0])
+                        # print("fc4 weight change:", fc4_a[0] - fc4_b[0])
+
+                        # fc4,fc5 = [d for d in self.q_network.model.layers if isinstance(d, tf.keras.layers.Dense)]
+                        # X_re = np.array(oldboards).reshape((-1, self.q_network.board_size, self.q_network.board_size, 1))
+                        # #for i in range(y_target.shape[0]):
+                        # fc4_b, fc5_b = fc4.get_weights(), fc5.get_weights()
+                        # #loss += self.q_network.model.train_on_batch(x=[X_re[i, None], actions_one_hot[i, None]], y=y_target[i, None])
+                        # loss += self.q_network.model.train_on_batch(x=[X_re[:2], actions_one_hot[:2]], y=y_target[:2])
+                        # fc4_a, fc5_a = fc4.get_weights(), fc5.get_weights()
+                        # print("\nboard: ", np.ravel(X_re[:2]))
+                        # print("mask: ", actions_one_hot[:2])
+                        # print("Y_target", y_target[:2])
+                        # #print(self.q_network.model.layers["fc5"].get_weights())
+                        # #self.q_network.print_sample_weights(samples=64)
+                        # print("fc5 weight change:", fc5_a[0] - fc5_b[0])
+                        # print("fc4 weight change:", fc4_a[0] - fc4_b[0])
+
                 # Every so often, copy the network weights over from the Q-network to the Q-hat network
                 # (this is required for network weight convergence)
                 if globalstep % update_qhat_weights_steps == 0:
                     self.q_network.copy_weights_to(self.q_hat)
                     print("Weights copied to Q-hat network")
-                    self.save_model_weights()
+                    self.q_network.save_to_file()
 
                 # Perform annealing on epsilon
                 epsilon = max(min_epsilon, min_epsilon + ((max_epsilon - min_epsilon) * (episodes - episode) / episodes))
@@ -232,7 +230,7 @@ class GameTrainer():
 
         # Perform one final model weight save for next run
         if self.save_model:
-            self.save_model_weights()
+            self.q_network.save_to_file()
             self.save_experience_history(D)
 
         return gamehistory
