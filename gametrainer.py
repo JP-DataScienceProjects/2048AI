@@ -18,7 +18,7 @@ from gameboard import GameBoard, GameStates, GameActions
 from gamemodel import GameModel
 
 class GameTrainer():
-    def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.001, max_experience_history=600):
+    def __init__(self, board_size, save_model=True, model_dir=None, debug=True, learning_rate=0.01, max_experience_history=600000):
         self.save_model = save_model
         self.model_dir = model_dir
         self.experience_history_path = self.model_dir + "exp_history.p"
