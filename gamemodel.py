@@ -61,7 +61,7 @@ class GameModel():
         #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate), loss='mse')
 
 
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss='mse')
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate, clipvalue=1.0), loss='mse')
         #self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
 
 
@@ -108,7 +108,7 @@ class GameModel():
 
     def copy_weights_to(self, newmodel):
         newmodel.model.set_weights(self.model.get_weights())
-        if isinstance(newmodel, GameModel): newmodel.compile()
+        newmodel.compile()
         return newmodel
 
     # @staticmethod
