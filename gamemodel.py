@@ -47,7 +47,7 @@ class GameModel():
             #batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
             #with tf.variable_scope("L4"):
-            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(fc4)
+            fc5 = tf.keras.layers.Dense(units=len(GameActions), activation=tf.keras.activations.tanh, name='fc5')(fc4)
             X_action_mask = tf.keras.layers.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
             output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
 
@@ -63,7 +63,7 @@ class GameModel():
         #self.model.compile(optimizer=tf.keras.optimizers.RMSprop(lr=self.learning_rate), loss='mse')
 
 
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=lr, momentum=0.9, clipvalue=1.0), loss='mse')
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=lr, momentum=0.9, clipvalue=1.0), loss=GameModel.calc_loss)
         #self.model.compile(optimizer=tf.keras.optimizers.SGD(lr=self.learning_rate), loss=GameModel.clipped_loss)
 
 
@@ -95,7 +95,7 @@ class GameModel():
             print("\t{0}: {1}, {2}".format(layer.name, np.ravel(weights)[:samples], biases[:samples]))
 
     def prepare_inputs(self, board_inputs, action_inputs=None):
-        X = board_inputs.reshape((-1, self.board_size, self.board_size, 1))
+        X = np.array(board_inputs).reshape((-1, self.board_size, self.board_size, 1))
         X_action_mask = action_inputs.reshape(-1, len(GameActions)) if isinstance(action_inputs, np.ndarray) else np.ones((X.shape[0], len(GameActions)))
         return (X, X_action_mask)
 
@@ -113,12 +113,6 @@ class GameModel():
         newmodel.compile()
         return newmodel
 
-    # @staticmethod
-    # def clipped_loss(y_true, y_pred):
-    #     # sq_err = tf.keras.backend.square(y_pred - y_true)
-    #     # sq_err_clipped = tf.keras.backend.clip(sq_err, -1, 1)
-    #     err_clipped = tf.keras.backend.clip(y_true - y_pred, -1, 1)
-    #     sq_err_clipped = tf.keras.backend.square(err_clipped)
-    #     total_err = tf.keras.backend.mean(tf.keras.backend.sum(sq_err_clipped, axis=0))
-    #     #total_err = tf.keras.backend.sum(sq_err_clipped, axis=0)
-    #     return total_err
+    @staticmethod
+    def calc_loss(y_true, y_pred):
+        return tf.keras.backend.mean(tf.keras.backend.square(tf.keras.backend.sum(y_true - y_pred, axis=1)))

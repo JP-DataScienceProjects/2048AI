@@ -43,8 +43,8 @@ def main(argv):
 
     if flags.train:
         # Invoke the model trainer
-        trainer = GameTrainer(board_size=flags.bsize, save_model=(not flags.no_save), model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate)
-        game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile, min_epsilon=flags.min_epsilon, max_epsilon=flags.max_epsilon)
+        trainer = GameTrainer(board_size=flags.bsize, save_model=(not flags.no_save), model_dir=save_dir, debug=flags.debug, learning_rate=flags.learning_rate, max_experience_history=flags.max_history)
+        game_history = trainer.train_model(episodes=flags.train, max_tile=flags.max_tile, min_epsilon=flags.min_epsilon, max_epsilon=flags.max_epsilon, mini_batch_size=flags.batch_size)
         if not flags.suppress_charts: GameTrainer.display_training_history(game_history)
 
     else:
@@ -71,9 +71,9 @@ if __name__ == "__main__":
                         help='minimum probability to select a random action')
     parser.add_argument('--max_epsilon', metavar='<NUM>', default=1.0, type=float,
                         help='maximum probability to select a random action')
-    # parser.add_argument('--playonly', metavar='<SIZE>', default=False, required=False, type=bool, nargs=0,
-    #                     help='observe gameplay using best model')
+    parser.add_argument('--batch_size', metavar='<NUM>', default=32, type=int,
+                        help='mini batch size for stochastic gradient descent')
+    parser.add_argument('--max_history', metavar='<NUM>', default=600000, type=int,
+                        help='maximum experience history to retain for Q-learning')
 
-    #tf.logging.set_verbosity(tf.logging.INFO)
-    # tf.app.run()
     main(argv=sys.argv)

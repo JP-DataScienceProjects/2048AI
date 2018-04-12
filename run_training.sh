@@ -1,7 +1,7 @@
 #!/bin/sh
 #./runTB.sh
 
-lr=0.0001
+lr=0.001
 max_tile=256
 min_epsilon=0.1
 max_epsilon=1.0
