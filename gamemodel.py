@@ -47,7 +47,7 @@ class GameModel():
             #batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
             #with tf.variable_scope("L4"):
-            fc5 = tf.keras.layers.Dense(units=len(GameActions), activation=tf.keras.activations.tanh, name='fc5')(fc4)
+            fc5 = tf.keras.layers.Dense(units=len(GameActions), name='fc5')(fc4)
             X_action_mask = tf.keras.layers.Input(shape=(len(GameActions),), dtype=tf.float32, name='X_action_mask')
             output = tf.keras.layers.Multiply(name='output')([X_action_mask, fc5])
 
@@ -77,7 +77,7 @@ class GameModel():
             f.write(self.model.to_json())
         self.model.save_weights(self.weight_file_path, overwrite=True)
         print("Model/weights for {0} saved to {1} and {2}".format(self.model_name, self.model_file_path, self.weight_file_path))
-        self.print_sample_weights()
+        #self.print_sample_weights()
 
     def load_from_file(self):
         with open(self.model_file_path) as f:
@@ -85,14 +85,14 @@ class GameModel():
         self.model.load_weights(self.weight_file_path)
         self.compile()
         print("Model/weights for {0} loaded from {1} and {2}".format(self.model_name, self.model_file_path, self.weight_file_path))
-        self.print_sample_weights()
+        #self.print_sample_weights()
 
-    def print_sample_weights(self, samples=4):
-        print("Sample weights for {0}".format(self.model_name))
-        #for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense)]:
-        for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense) or isinstance(d, tf.keras.layers.Conv2D)]:
-            weights,biases = layer.get_weights()
-            print("\t{0}: {1}, {2}".format(layer.name, np.ravel(weights)[:samples], biases[:samples]))
+    # def print_sample_weights(self, samples=4):
+    #     print("Sample weights for {0}".format(self.model_name))
+    #     #for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense)]:
+    #     for layer in [d for d in self.model.layers if isinstance(d, tf.keras.layers.Dense) or isinstance(d, tf.keras.layers.Conv2D)]:
+    #         weights,biases = layer.get_weights()
+    #         print("\t{0}: {1}, {2}".format(layer.name, np.ravel(weights)[:samples], biases[:samples]))
 
     def prepare_inputs(self, board_inputs, action_inputs=None):
         X = np.array(board_inputs).reshape((-1, self.board_size, self.board_size, 1))
