@@ -69,19 +69,19 @@ class GameGrid(Frame):
                 else:
                     self.grid_cells[i][j].configure(text=str(new_number), bg=BACKGROUND_COLOR_DICT[new_number], fg=CELL_COLOR_DICT[new_number])
         self.update_idletasks()
+
+        if self.board.game_state == GameStates.WIN:
+            self.grid_cells[1][1].configure(text="You", bg=BACKGROUND_COLOR_CELL_EMPTY)
+            self.grid_cells[1][2].configure(text="Win!", bg=BACKGROUND_COLOR_CELL_EMPTY)
+
+        if self.board.game_state == GameStates.LOSE:
+            self.grid_cells[1][1].configure(text="You", bg=BACKGROUND_COLOR_CELL_EMPTY)
+            self.grid_cells[1][2].configure(text="Lose!", bg=BACKGROUND_COLOR_CELL_EMPTY)
         
     def key_down(self, event):
         if repr(event.char) in self.commands and self.commands[repr(event.char)] in self.board.actions:
             self.board.make_move(self.commands[repr(event.char)])
-
             self.update_grid_cells()
-            if self.board.game_state == GameStates.WIN:
-                self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
-                self.grid_cells[1][2].configure(text="Win!",bg=BACKGROUND_COLOR_CELL_EMPTY)
-
-            if self.board.game_state == GameStates.LOSE:
-                self.grid_cells[1][1].configure(text="You",bg=BACKGROUND_COLOR_CELL_EMPTY)
-                self.grid_cells[1][2].configure(text="Lose!",bg=BACKGROUND_COLOR_CELL_EMPTY)
 
 if __name__ == "__main__":
     gamegrid = GameGrid()

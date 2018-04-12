@@ -28,8 +28,8 @@ class GameBoard():
         self._free_tiles = n ** 2
         self._largest_tile_placed = 2
         self._score = 0
-        self.add_two()
-        self.add_two()
+        self.add_tile(value=2)
+        self.add_tile(value=2)
         self.on_board_updated()
 
     def __getitem__(self, item):
@@ -104,12 +104,12 @@ class GameBoard():
 
         self._game_state = GameStates.LOSE if len(self.action_set) <= 0 else GameStates.IN_PROGRESS
 
-    def add_two(self):
+    def add_tile(self, value=None):
         found = False
         while not found:
             i, j = np.random.randint(0, len(self.board), 2)
             found = (self.board[i][j] == 0)
-        self.board[i][j] = 2
+        self.board[i][j] = value if isinstance(value, int) else np.random.randint(1, 3) * 2
         self._free_tiles -= 1
 
     def compress(self):
@@ -142,7 +142,7 @@ class GameBoard():
     def make_move(self, action):
         if not action in self.action_set: return
         {GameActions.UP: self.up, GameActions.DOWN: self.down, GameActions.LEFT: self.left, GameActions.RIGHT: self.right}[action]()
-        self.add_two()
+        self.add_tile()
         self.on_board_updated()
         #print('Score: {0}, Remaining tiles: {1}'.format(self.score, self._free_tiles))
 

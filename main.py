@@ -16,7 +16,6 @@ from gametrainer import GameTrainer
 from threading import Timer
 
 def run_interactive(board_size, model_dir, auto_play=False, max_tile=2048, epsilon=0.05):
-    gamegrid = GameGrid(max_tile=max_tile)
     trainer = GameTrainer(board_size=board_size, model_dir=model_dir)
 
     def make_next_move(gameboard):
@@ -32,12 +31,13 @@ def run_interactive(board_size, model_dir, auto_play=False, max_tile=2048, epsil
         print("\n", probs)
         print(msg)
         if auto_play:
-            Timer(0.5, make_next_move, [event.board]).start()
+            if event.board.game_state == GameStates.IN_PROGRESS: Timer(0.5, make_next_move, [event.board]).start()
             gamegrid.update_grid_cells()
 
 
+    gamegrid = GameGrid(max_tile=max_tile)
     zope.event.subscribers.append(on_board_updated)
-    if auto_play: Timer(2, make_next_move, [gamegrid.board]).start()
+    #if auto_play: Timer(2, make_next_move, [gamegrid.board]).start()
     gamegrid.start()
 
 

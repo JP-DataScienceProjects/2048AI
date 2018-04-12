@@ -178,17 +178,6 @@ class GameTrainer():
                     # else:
                     #loss += self.q_network.model.train_on_batch(x=X, y=y_target)
 
-
-                    # print("Calling train_on_batch multiple times for batch of size: {0}".format(mini_batch_size))
-                    # print("y_target = {0}\n".format(y_target))
-                    # for i in range(10):
-                    #     print("y_pred = {0}".format(np.vstack([np.ravel(self.q_network(oldboards[i], actions_one_hot[i])) for i in
-                    #                                  range(mini_batch_size)])))
-                    #     print("diff = {0}".format(np.vstack([np.ravel(self.q_network(oldboards[i], actions_one_hot[i])) for i in
-                    #                                range(mini_batch_size)]) - y_target))
-                    #     curloss = self.q_network.model.train_on_batch(x=X, y=y_target)
-                    #     print("Current loss: {:.4f}\n".format(curloss))
-
                     write_log_entry = (globalstep % (update_frequency * 10) == 0) and f_log
                     if write_log_entry:
                         y_pred = self.q_network(oldboards, actions_one_hot)
@@ -209,11 +198,6 @@ class GameTrainer():
                 # Every so often, copy the network weights over from the Q-network to the Q-hat network
                 # (this is required for network weight convergence)
                 if globalstep % update_qhat_weights_steps == 0:
-                    # def gen_test_board():
-                    #     testboard = GameBoard(self.q_network.board_size, max_tile)
-                    #     testboard.board = np.random.randint(0, int(np.log2(max_tile)) + 1, self.q_network.board_size ** 2)
-                    #     testboard.board = np.array([v if v <= 0 else np.power(2, v) for v in testboard.board])
-                    #     return  self.preprocess_state(testboard)
                     def test_weight_update(testboard):
                         board_processed = self.preprocess_state(testboard)
                         q_res = np.ravel(self.q_network(board_processed))
@@ -222,8 +206,6 @@ class GameTrainer():
                         print("Q-hat result on testboard: {0}".format(q_hat_res))
                         print("Difference: {0}\n".format(q_res - q_hat_res))
 
-                    # testboard = gen_test_board()
-                    #testboard = oldboard
                     test_weight_update(oldboard)
 
                     self.q_network.copy_weights_to(self.q_hat)
