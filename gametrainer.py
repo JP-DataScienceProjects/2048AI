@@ -213,8 +213,8 @@ class GameTrainer():
                     print("Weights copied to Q-hat network")
                     self.q_network.save_to_file()
 
-                    #lr_new = self.learning_rate / (1 + episode / (episodes/2))
-                    lr_new = self.learning_rate / np.sqrt(episode)
+                    lr_new = self.learning_rate / (1 + episode / (episodes/2))
+                    #lr_new = self.learning_rate / np.sqrt(episode)
                     self.q_network.compile(learning_rate=lr_new)
                     print("Q-network learning rate updated to {:.6f}".format(lr_new))
 
