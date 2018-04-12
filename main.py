@@ -13,20 +13,32 @@ from gameboard import GameBoard, GameStates, GameActions, OnBoardChanged
 from gamegrid import GameGrid
 from gametrainer import GameTrainer
 
+from threading import Timer
 
-
-def run_interactive(board_size, model_dir):
+def run_interactive(board_size, model_dir, auto_play=False, max_tile=2048, epsilon=0.05):
+    gamegrid = GameGrid(max_tile=max_tile)
     trainer = GameTrainer(board_size=board_size, model_dir=model_dir)
+
+    def make_next_move(gameboard):
+        action = trainer.select_action(gameboard, epsilon)
+        print("Moving {0}".format(action.name))
+        return gameboard.make_move(action)
 
     def on_board_updated(event):
         if not isinstance(event, OnBoardChanged): return
         probs = trainer.get_action_probabilities(event.board)
         msg = " ".join(["{:s}: {:.1f}%".format(GameActions(i).name, p) for i,p in enumerate(Utils.softmax(probs) * 100.)])
         #msg = " ".join(["{:s}: {:.1f}%".format(GameActions(i).name, p) for i, p in enumerate(probs)])
+        print("\n", probs)
         print(msg)
+        if auto_play:
+            Timer(0.5, make_next_move, [event.board]).start()
+            gamegrid.update_grid_cells()
+
 
     zope.event.subscribers.append(on_board_updated)
-    gamegrid = GameGrid()
+    if auto_play: Timer(2, make_next_move, [gamegrid.board]).start()
+    gamegrid.start()
 
 
 
@@ -48,7 +60,7 @@ def main(argv):
         if not flags.suppress_charts: GameTrainer.display_training_history(game_history)
 
     else:
-        run_interactive(board_size=flags.bsize, model_dir=save_dir)
+        run_interactive(board_size=flags.bsize, model_dir=save_dir, auto_play=flags.auto_play, max_tile=flags.max_tile, epsilon=flags.max_epsilon)
 
 
     # Explicitly clear the keras session to avoid intermittent error message on termination
@@ -75,5 +87,6 @@ if __name__ == "__main__":
                         help='mini batch size for stochastic gradient descent')
     parser.add_argument('--max_history', metavar='<NUM>', default=600000, type=int,
                         help='maximum experience history to retain for Q-learning')
+    parser.add_argument('--auto_play', action='store_true', help='whether the computer should play automatically in interactive mode')
 
     main(argv=sys.argv)

@@ -26,10 +26,10 @@ KEY_LEFT = "'a'"
 KEY_RIGHT = "'d'"
 
 class GameGrid(Frame):
-    def __init__(self):
+    def __init__(self, max_tile=2048):
         Frame.__init__(self)
 
-        self.board = GameBoard(GRID_LEN)
+        self.board = GameBoard(GRID_LEN, max_tile=max_tile)
 
         self.grid()
         self.master.title('2048')
@@ -41,8 +41,10 @@ class GameGrid(Frame):
         self.grid_cells = []
         self.init_grid()
         self.update_grid_cells()
-        
+
+    def start(self):
         self.mainloop()
+
 
     def init_grid(self):
         background = Frame(self, bg=BACKGROUND_COLOR_GAME, width=SIZE, height=SIZE)
@@ -83,3 +85,4 @@ class GameGrid(Frame):
 
 if __name__ == "__main__":
     gamegrid = GameGrid()
+    gamegrid.start()

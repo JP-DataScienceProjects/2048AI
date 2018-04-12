@@ -215,8 +215,9 @@ class GameTrainer():
                     #     testboard.board = np.array([v if v <= 0 else np.power(2, v) for v in testboard.board])
                     #     return  self.preprocess_state(testboard)
                     def test_weight_update(testboard):
-                        q_res = np.ravel(self.q_network(testboard))
-                        q_hat_res = np.ravel(self.q_hat(testboard))
+                        board_processed = self.preprocess_state(testboard)
+                        q_res = np.ravel(self.q_network(board_processed))
+                        q_hat_res = np.ravel(self.q_hat(board_processed))
                         print("\nQ-network result on testboard: {0}".format(q_res))
                         print("Q-hat result on testboard: {0}".format(q_hat_res))
                         print("Difference: {0}\n".format(q_res - q_hat_res))
