@@ -25,7 +25,7 @@ class GameModel():
             X = tf.keras.layers.Input(name='X', dtype=tf.float32, shape=(self.board_size, self.board_size, 1,))
 
             #with tf.variable_scope("L1"):
-            conv1 = tf.keras.layers.Conv2D(filters=32, kernel_size=3, padding='same', activation=tf.keras.activations.relu, name='conv1')(X)
+            conv1 = tf.keras.layers.Conv2D(filters=16, kernel_size=3, padding='same', activation=tf.keras.activations.relu, name='conv1')(X)
             maxpool1 = tf.keras.layers.MaxPooling2D(pool_size=2, strides=1, padding='same', name='maxpool1')(conv1)
 
             conv2 = tf.keras.layers.Conv2D(filters=conv1.shape.dims[-1].value * 2, kernel_size=2, padding='same', activation=tf.keras.activations.relu, name='conv2')(maxpool1)
@@ -38,11 +38,11 @@ class GameModel():
 
             #with tf.variable_scope("L3"):
             flatten2 = tf.keras.layers.Flatten(name='flatten2')(maxpool2)
-            #fc3 = tf.keras.layers.Dense(units=128, activation=tf.keras.activations.relu, name='fc3')(flatten2)
-            #dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
-            #batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
+            fc3 = tf.keras.layers.Dense(units=flatten2.shape.dims[-1].value // 4, activation=tf.keras.activations.relu, name='fc3')(flatten2)
+            dropout3 = tf.keras.layers.Dropout(rate=0.5, name='dropout3')(fc3)
+            batchnorm3 = tf.keras.layers.BatchNormalization(name='batchnorm3')(dropout3)
 
-            fc4 = tf.keras.layers.Dense(units=32, activation=tf.keras.activations.relu, name='fc4')(flatten2)
+            fc4 = tf.keras.layers.Dense(units=max(batchnorm3.shape.dims[-1].value // 2, 32), activation=tf.keras.activations.relu, name='fc4')(batchnorm3)
             dropout4 = tf.keras.layers.Dropout(rate=0.5, name='dropout4')(fc4)
             batchnorm4 = tf.keras.layers.BatchNormalization(name='batchnorm4')(dropout4)
 
