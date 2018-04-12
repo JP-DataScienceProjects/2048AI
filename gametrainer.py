@@ -209,26 +209,27 @@ class GameTrainer():
                 # Every so often, copy the network weights over from the Q-network to the Q-hat network
                 # (this is required for network weight convergence)
                 if globalstep % update_qhat_weights_steps == 0:
-                    def gen_test_board():
-                        testboard = GameBoard(self.q_network.board_size, max_tile)
-                        testboard.board = np.random.randint(0, int(np.log2(max_tile)) + 1, self.q_network.board_size ** 2)
-                        testboard.board = np.array([v if v <= 0 else np.power(2, v) for v in testboard.board])
-                        return  self.preprocess_state(testboard)
+                    # def gen_test_board():
+                    #     testboard = GameBoard(self.q_network.board_size, max_tile)
+                    #     testboard.board = np.random.randint(0, int(np.log2(max_tile)) + 1, self.q_network.board_size ** 2)
+                    #     testboard.board = np.array([v if v <= 0 else np.power(2, v) for v in testboard.board])
+                    #     return  self.preprocess_state(testboard)
                     def test_weight_update(testboard):
                         q_res = np.ravel(self.q_network(testboard))
                         q_hat_res = np.ravel(self.q_hat(testboard))
                         print("\nQ-network result on testboard: {0}".format(q_res))
                         print("Q-hat result on testboard: {0}".format(q_hat_res))
-                        print("Difference: {0}".format(q_res - q_hat_res))
+                        print("Difference: {0}\n".format(q_res - q_hat_res))
 
-                    testboard = gen_test_board()
-                    test_weight_update(testboard)
+                    # testboard = gen_test_board()
+                    #testboard = oldboard
+                    test_weight_update(oldboard)
 
                     self.q_network.copy_weights_to(self.q_hat)
                     print("Weights copied to Q-hat network")
                     self.q_network.save_to_file()
 
-                    test_weight_update(testboard)
+                    test_weight_update(oldboard)
 
                     lr_new = self.learning_rate / (1 + episode / (episodes/2))
                     #lr_new = self.learning_rate / np.sqrt(episode)
