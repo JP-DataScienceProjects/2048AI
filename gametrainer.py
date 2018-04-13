@@ -176,7 +176,7 @@ class GameTrainer():
                     # sampled history item
                     y_target = self.calculate_y_target(newboards, actions_one_hot, rewards, gamestates, gamma)
 
-                    print("Rewards:{0}".format(" ".join(["{:.2f}".format(r) for r in rewards])))
+                    #print("Rewards:{0}".format(" ".join(["{:.2f}".format(r) for r in rewards])))
 
                     # Perform a single gradient descent update step on the Q-network
                     # callbacks = []
