@@ -45,7 +45,7 @@ class GameTrainer():
         if newboard.game_state == GameStates.LOSE: return -1
         if newboard.game_state == GameStates.WIN: return 1
         tile_placement_mean_score = np.mean(oldboard.bonus_mask * 3)
-        reward = np.clip((newboard.score - oldboard.score - tile_placement_mean_score) / oldboard.max_tile, -1, 1)
+        reward = np.clip(4 * (newboard.score - oldboard.score - tile_placement_mean_score) / oldboard.max_tile, -1, 1)
         #print("Score: {0}".format(score))
         return reward
 
@@ -176,7 +176,7 @@ class GameTrainer():
                     # sampled history item
                     y_target = self.calculate_y_target(newboards, actions_one_hot, rewards, gamestates, gamma)
 
-                    #print("Rewards: min {0}, max {1}".format(np.min(rewards), np.max(rewards)))
+                    #print("Rewards: min {:.3f}, max {:.3f}".format(np.min(rewards), np.max(rewards)))
 
                     # Perform a single gradient descent update step on the Q-network
                     # callbacks = []
