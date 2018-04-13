@@ -33,13 +33,21 @@ class GameTrainer():
 
     def calc_reward(self, oldboard, newboard):
         # The rewards should be normalized so that the max tile value can be changed without having to retrain
-        if newboard.game_state == GameStates.LOSE: return -1
-        nom_reward = np.clip((newboard.score - oldboard.score) // 2 , 1, None)
-        reward = np.log2(nom_reward) / (np.log2(newboard.max_tile) - 1)
-        return np.clip(reward, -1., 1.)
+        # if newboard.game_state == GameStates.LOSE: return -1
+        # nom_reward = np.clip((newboard.score - oldboard.score) // 2 , 1, None)
+        # reward = np.log2(nom_reward) / (np.log2(newboard.max_tile) - 1)
+        # return np.clip(reward, -1., 1.)
         # if newboard.game_state == GameStates.LOSE: return -1
         # if newboard.game_state == GameStates.WIN: return 1
         # return 0
+        #max_reward = np.log2(oldboard.max_tile)
+        # Mean of the score awarded for new tile placement - either a 2 or a 4 are equally likely so mean = 3
+        if newboard.game_state == GameStates.LOSE: return -1
+        if newboard.game_state == GameStates.WIN: return 1
+        tile_placement_mean_score = np.mean(oldboard.bonus_mask * 3)
+        reward = np.clip((newboard.score - oldboard.score - tile_placement_mean_score) / oldboard.max_tile, -1, 1)
+        #print("Score: {0}".format(score))
+        return reward
 
     def exec_action(self, gameboard, gameaction):
         oldboard = copy.deepcopy(gameboard)
@@ -167,6 +175,8 @@ class GameTrainer():
                     # Compute the target network output using the Q-hat network, actions and rewards for each
                     # sampled history item
                     y_target = self.calculate_y_target(newboards, actions_one_hot, rewards, gamestates, gamma)
+
+                    #print("Rewards: min {0}, max {1}".format(np.min(rewards), np.max(rewards)))
 
                     # Perform a single gradient descent update step on the Q-network
                     # callbacks = []

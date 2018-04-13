@@ -28,6 +28,10 @@ class GameBoard():
         self._free_tiles = n ** 2
         self._largest_tile_placed = 2
         self._score = 0
+        center = (self.n - 1) / 2
+        self.bonus_mask = np.array([(i - center) * (j - center) for i in range(self.n) for j in range(self.n)]).reshape(self.n, self.n)
+        self.bonus_mask = np.abs(self.bonus_mask) / np.max(self.bonus_mask)
+
         self.add_tile(value=2)
         self.add_tile(value=2)
         self.on_board_updated()
@@ -58,6 +62,7 @@ class GameBoard():
 
     def on_board_updated(self):
         self.update_action_set()
+        self.calc_score()
         notify(OnBoardChanged(self))
 
     def update_action_set(self):
@@ -135,9 +140,13 @@ class GameBoard():
                 self.board[i][j + 1] = 0
                 self._free_tiles += 1
                 self._largest_tile_placed = max(self.board[i][j], self._largest_tile_placed)
-                self._score += self.board[i][j]
+                #self._score += self.board[i][j]
                 #self._score += self.board[i][j] // 4
                 #self._score += int(np.log2(self.board[i][j])) - 1
+
+    def calc_score(self):
+        self._score = int(np.sum(self.bonus_mask * self.board))
+
 
     def make_move(self, action):
         if not action in self.action_set: return
